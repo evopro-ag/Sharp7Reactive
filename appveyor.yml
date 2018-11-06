@@ -26,7 +26,7 @@ before_build:
 
   # Display minimal restore text
 
-  - cmd: dotnet restore ./src/src.csproj --verbosity m
+  - cmd: dotnet restore ./Sharp7.Rx/Sharp7.Rx.csproj --verbosity m
 
 build_script:
 
