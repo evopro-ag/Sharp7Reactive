@@ -24,27 +24,23 @@ before_build:
 
   - cmd: dotnet --version
 
-  # Display minimal restore text
-
   - cmd: dotnet restore ./Sharp7.Rx/Sharp7.Rx.csproj --verbosity m
 
 build_script:
 
-  # output will be in ./src/bin/debug/netcoreapp1.1/publish
-
-  - cmd: dotnet publish ./Sharp7.Rx/Sharp7.Rx.csproj
+  - cmd: dotnet publish ./Sharp7.Rx/Sharp7.Rx.csproj -c Release
 
 after_build:
 
-  # For once the build has completed
+  - ps:   _nuspec/pack.ps1
 
 artifacts:
 
- - path: '\src\bin\Debug\netcoreapp1.1\publish'
+ - path: '**\*.nupkg'
 
-   name: Sharp.Rx
+   name: Sharp7.Rx_nuget
 
-   type: WebDeployPackage
+   type: Auto
 
 clone_depth: 1
 
@@ -56,9 +52,9 @@ test_script:
   
   # run the unit tests (requires changing into the test directory)
 
-  - cmd: cd Sharp7.Rx.Tests
+  #- cmd: cd Sharp7.Rx.Tests
   
-  - cmd: dotnet nunit
+  #- cmd: dotnet nunit
 
 on_finish :
 
