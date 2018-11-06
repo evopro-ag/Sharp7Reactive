@@ -56,9 +56,9 @@ test_script:
 
   # run the unit tests (requires changing into the test directory)
 
-  - cmd: cd tests
-
-  - cmd: dotnet xunit
+  - cmd: cd Sharp7.Rx.Tests
+  
+  # TODO run specflow tests
 
 on_finish :
 
