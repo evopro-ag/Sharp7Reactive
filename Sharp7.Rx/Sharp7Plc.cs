@@ -16,7 +16,7 @@ namespace Sharp7.Rx
         private readonly string ipAddress;
         private readonly int rackNumber;
         private readonly int cpuMpiAddress;
-        private readonly S7VaraibleNameParser varaibleNameParser;
+        private readonly S7VariableNameParser varaibleNameParser;
         private bool disposed;
         private ISubject<Unit> disposingSubject = new Subject<Unit>();
         private IS7Connector s7Connector;
@@ -27,7 +27,7 @@ namespace Sharp7.Rx
             this.rackNumber = rackNumber;
             this.cpuMpiAddress = cpuMpiAddress;
 
-            varaibleNameParser = new S7VaraibleNameParser();
+            varaibleNameParser = new S7VariableNameParser();
         }
 
         public IObservable<ConnectionState> ConnectionState { get; private set; }
