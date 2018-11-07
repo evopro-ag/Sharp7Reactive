@@ -1,7 +1,7 @@
 $version = [System.Reflection.Assembly]::LoadFile("C:\projects\Sharp7Reactive\Sharp7.Rx\bin\Release\netstandard2.0\Sharp7.Rx.dll").GetName().Version
 $versionStr = "{0}.{1}.{2}" -f ($version.Major, $version.Minor, $version.Build)
 
-Write-Host "Setting .nuspec version tag to $versionStr oder $env:version"
+Write-Host "Setting .nuspec version tag to $versionStr oder $env:appveyor_build_version"
 
 $content = (Get-Content _nuspec\Sharp7.Rx.nuspec) 
 $content = $content -replace '\$version\$',$versionStr
