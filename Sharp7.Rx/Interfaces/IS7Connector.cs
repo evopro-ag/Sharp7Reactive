@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Sharp7.Rx.Enums;
 
 namespace Sharp7.Rx.Interfaces
@@ -18,5 +19,6 @@ namespace Sharp7.Rx.Interfaces
 
         Task<bool> WriteBit(Operand operand, ushort startByteAddress, byte bitAdress, bool value, ushort dbNr, CancellationToken token);
         Task<ushort> WriteBytes(Operand operand, ushort startByteAdress, byte[] data, ushort dBNr, CancellationToken token);
+	    ILogger Logger { get; }
     }
 }

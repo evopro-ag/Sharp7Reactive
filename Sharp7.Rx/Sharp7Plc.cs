@@ -5,7 +5,9 @@ using System.Reactive.Subjects;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Sharp7.Rx.Enums;
+using Sharp7.Rx.Extensions;
 using Sharp7.Rx.Interfaces;
 using Sharp7.Rx.Resources;
 
@@ -247,8 +249,8 @@ namespace Sharp7.Rx
                         Value = value
                     };
                 })
-                // TODO: .RepeatAfterDelay(cycle)
-                // TODO: .LogAndRetryAfterDelay(Logger, cycle, StringResources.StrLogErrorReadingDataFromPlc)
+                .RepeatAfterDelay(cycle)
+                .LogAndRetryAfterDelay(s7Connector.Logger, cycle, StringResources.StrLogErrorReadingDataFromPlc)
                 .TakeUntil(disposingSubject)
                 .Where(union => union.HasValue)
                 .Select(union => union.Value);

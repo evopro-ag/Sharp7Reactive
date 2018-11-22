@@ -9,5 +9,6 @@ namespace Sharp7.Rx.Interfaces
         IObservable<TValue> CreateNotification<TValue>(string variableName, TransmissionMode transmissionMode, TimeSpan cycleSpan);
         Task SetValue<TValue>(string variableName, TValue value);
         Task<TValue> GetValue<TValue>(string variableName);
+		IObservable<ConnectionState> ConnectionState { get; }
     }
 }

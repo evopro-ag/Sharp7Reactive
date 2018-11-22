@@ -4,7 +4,9 @@ using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Sharp7.Rx.Enums;
+using Sharp7.Rx.Extensions;
 using Sharp7.Rx.Interfaces;
 using Sharp7.Rx.Resources;
 
@@ -18,17 +20,21 @@ namespace Sharp7.Rx
         private readonly string ipAddress;
         private readonly int rackNr;
         private readonly int cpuSlotNr;
+	    private readonly int port;
 
-        private S7Client sharp7;
+	    private S7Client sharp7;
         private bool disposed;
 
-        public Sharp7Connector(string ipAddress, int rackNr = 0, int cpuSlotNr = 2)
-        {
+		public ILogger Logger { get; set; }
+
+		public Sharp7Connector(string ipAddress, int rackNr = 0, int cpuSlotNr = 2, int port = 102)
+		{
             this.ipAddress = ipAddress;
             this.cpuSlotNr = cpuSlotNr;
-            this.rackNr = rackNr;
+			this.port = port;
+			this.rackNr = rackNr;
 
-            ReconnectDelay = TimeSpan.FromSeconds(5);
+			ReconnectDelay = TimeSpan.FromSeconds(5);
         }
 
         public TimeSpan ReconnectDelay { get; set; }
@@ -76,22 +82,23 @@ namespace Sharp7.Rx
             try
             {
                 sharp7 = new S7Client();
+	            sharp7.PLCPort = this.port;
 
-                var subscription =
+				var subscription =
                     ConnectionState
                         .Where(state => state == Enums.ConnectionState.ConnectionLost)
                         .Take(1)
                         .SelectMany(_ => Reconnect())
-                        // TODO: .RepeatAfterDelay(ReconnectDelay)
-                        // TODO: .LogAndRetry(logger, "Error while reconnecting to S7.")
+                        .RepeatAfterDelay(ReconnectDelay)
+                        .LogAndRetry(Logger, "Error while reconnecting to S7.")
                         .Subscribe();
 
                 disposables.Add(subscription);
             }
             catch (Exception ex)
             {
-                // TODO:
-            }
+				Logger?.LogError(ex, StringResources.StrErrorS7DriverCouldNotBeInitialized);
+			}
 
             return Task.FromResult(true);
         }
