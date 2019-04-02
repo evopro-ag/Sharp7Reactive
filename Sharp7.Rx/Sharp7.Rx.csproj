@@ -10,6 +10,8 @@
     <Description>Reactive framework for Sharp7, the Ethernet S7 PLC communication suite</Description>
     <PackageProjectUrl>https://github.com/evopro-ag/Sharp7Reactive</PackageProjectUrl>
     <PackageLicenseUrl>https://raw.githubusercontent.com/evopro-ag/Sharp7Reactive/master/LICENSE</PackageLicenseUrl>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
 
   <ItemGroup>
