@@ -16,20 +16,6 @@ namespace Sharp7.Rx.Extensions
 {
 	internal static class ObservableExtensions
 	{
-		public static IObservable<Unit> Select<TSource>(this IObservable<TSource> source, Func<TSource, Task> selector)
-		{
-			return source
-				.Select(x => Observable.FromAsync(async () => await selector(x)))
-				.Concat();
-		}
-
-		public static IObservable<TResult> Select<TSource, TResult>(this IObservable<TSource> source, Func<TSource, Task<TResult>> selector)
-		{
-			return source
-				.Select(x => Observable.FromAsync(async () => await selector(x)))
-				.Concat();
-		}
-
 		public static IObservable<T> LogAndRetry<T>(this IObservable<T> source, ILogger logger, string message)
 		{
 			return source
@@ -99,15 +85,6 @@ namespace Sharp7.Rx.Extensions
 						obs.OnError,
 						obs.OnCompleted);
 				return new CompositeDisposable(serialDisposable, subscription);
-			});
-		}
-
-		public static IObservable<Unit> SelectMany<T>(this IObservable<T> source, Func<T, Task> selector)
-		{
-			return source.SelectMany(async item =>
-			{
-				await selector(item);
-				return Unit.Default;
 			});
 		}
 	}

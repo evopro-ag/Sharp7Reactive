@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
@@ -28,13 +29,17 @@ namespace Sharp7.Rx.Extensions
 
                 notification
                     .Where(trigger => trigger)
-                    .Select(_ => ReadDataAndAcknowlodge(plc, readData, ackTriggerAddress))
+                    .SelectMany(_ => ReadDataAndAcknowlodge(plc, readData, ackTriggerAddress))
                     .Subscribe(observer)
                     .AddDisposableTo(subscriptions);
 
                 notification
                     .Where(trigger => !trigger)
-                    .Select(_ => plc.SetValue(ackTriggerAddress, false))
+                    .SelectMany(async _ =>
+                        {
+                            await plc.SetValue(ackTriggerAddress, false);
+                            return Unit.Default;
+                        })
                     .Subscribe()
                     .AddDisposableTo(subscriptions);
 
