@@ -2,7 +2,7 @@
 
 namespace Sharp7.Rx
 {
-    internal class S7VariableAddress
+    public class S7VariableAddress
     {
         public Operand Operand { get; set; }
         public ushort DbNr { get; set; }

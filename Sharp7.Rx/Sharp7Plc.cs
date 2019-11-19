@@ -66,6 +66,16 @@ namespace Sharp7.Rx
         public async Task<TValue> GetValue<TValue>(string variableName, CancellationToken token)
         {
             var address = varaibleNameParser.Parse(variableName);
+            return await GetValue<TValue>(address, token);
+        }
+
+        public Task<TValue> GetValue<TValue>(S7VariableAddress address)
+        {
+            return GetValue<TValue>(address, CancellationToken.None);
+        }
+
+        public async Task<TValue> GetValue<TValue>(S7VariableAddress address, CancellationToken token)
+        {
             if (address == null) throw new ArgumentException("Input variable name is not valid", nameof(variableName));
 
             if (typeof(TValue) == typeof(bool))
@@ -162,6 +172,16 @@ namespace Sharp7.Rx
         public async Task SetValue<TValue>(string variableName, TValue value, CancellationToken token)
         {
             var address = varaibleNameParser.Parse(variableName);
+            await SetValue(address, value, token);
+        }
+
+        public async Task SetValue<TValue>(S7VariableAddress address, TValue value)
+        {
+            await SetValue(address, value, CancellationToken.None);
+        }
+
+        public async Task SetValue<TValue>(S7VariableAddress address,TValue value, CancellationToken token)
+        {
             if (address == null) throw new ArgumentException("Input variable name is not valid", "variableName");
 
             if (typeof(TValue) == typeof(bool))
@@ -229,7 +249,12 @@ namespace Sharp7.Rx
         public IObservable<TValue> CreateNotification<TValue>(string variableName, TransmissionMode transmissionMode, TimeSpan cycle)
         {
             var address = varaibleNameParser.Parse(variableName);
-            if (address == null) throw new ArgumentException("Input variable name is not valid", nameof(variableName));
+            return CreateNotification<TValue>(address, transmissionMode, cycle);
+        }
+
+        public IObservable<TValue> CreateNotification<TValue>(S7VariableAddress address, TransmissionMode transmissionMode, TimeSpan cycle)
+        {
+            if (address == null) throw new ArgumentException("Input variable name is not valid", nameof(address));
 
             if (cycle < TimeSpan.FromMilliseconds(100))
                 cycle = TimeSpan.FromMilliseconds(100);
@@ -240,7 +265,7 @@ namespace Sharp7.Rx
                     var value = default(TValue);
                     if (connected)
                     {
-                        value = await GetValue<TValue>(variableName, CancellationToken.None);
+                        value = await GetValue<TValue>(address, CancellationToken.None);
                     }
 
                     return new

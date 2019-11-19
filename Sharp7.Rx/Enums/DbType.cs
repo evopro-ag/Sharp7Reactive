@@ -1,6 +1,6 @@
 ﻿namespace Sharp7.Rx.Enums
 {
-    internal enum DbType
+    public enum DbType
     {
         Bit,
         String,
