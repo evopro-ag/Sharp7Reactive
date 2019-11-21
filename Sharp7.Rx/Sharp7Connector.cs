@@ -238,7 +238,7 @@ namespace Sharp7.Rx
         {
             EnsureConnectionValid();
 
-            //ReadArea Should Have A Lock
+            //WriteArea Should Have A Lock
             //When Many Tasks Want to Write To The CPU
             var func = (Func<int>)(() =>
             {
@@ -281,7 +281,17 @@ namespace Sharp7.Rx
 
             var offsetStart = (startByteAddress * 8) + bitAdress;
 
-            var result = await Task.Factory.StartNew(() => sharp7.WriteArea(FromOperand(operand), dbNr, offsetStart, 1, S7Consts.S7WLBit, buffer), token, TaskCreationOptions.None, scheduler);
+            //WriteArea Should Have A Lock
+            //When Many Tasks Want to Write To The CPU
+            var func = (Func<int>)(() =>
+            {
+                lock (sharp7Lock)
+                {
+                    return sharp7.WriteArea(FromOperand(operand), dbNr, offsetStart, 1, S7Consts.S7WLBit, buffer);
+                }
+            });
+
+            var result = await Task.Factory.StartNew(func, token, TaskCreationOptions.None, scheduler);
             token.ThrowIfCancellationRequested();
 
             if (result != 0)

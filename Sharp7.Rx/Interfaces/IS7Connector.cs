@@ -19,6 +19,6 @@ namespace Sharp7.Rx.Interfaces
 
         Task<bool> WriteBit(Operand operand, ushort startByteAddress, byte bitAdress, bool value, ushort dbNr, CancellationToken token);
         Task<ushort> WriteBytes(Operand operand, ushort startByteAdress, byte[] data, ushort dBNr, CancellationToken token);
-	    ILogger Logger { get; }
+        ILogger Logger { get; }
     }
 }

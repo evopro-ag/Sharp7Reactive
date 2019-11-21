@@ -76,7 +76,7 @@ namespace Sharp7.Rx
 
         public async Task<TValue> GetValue<TValue>(S7VariableAddress address, CancellationToken token)
         {
-            if (address == null) throw new ArgumentException("Input variable name is not valid", nameof(variableName));
+            if (address == null) throw new ArgumentException("Input variable name is not valid", nameof(address));
 
             if (typeof(TValue) == typeof(bool))
             {
