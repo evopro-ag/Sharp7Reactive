@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
@@ -84,11 +85,19 @@ namespace Sharp7.Rx
                 if (address.Length == 4)
                 {
                     Array.Reverse(b);
-                    return (TValue)(object)Convert.ToInt32(b);
+                    return (TValue)(object)BitConverter.ToInt32(b,0);
                 }
 
 
                 throw new InvalidOperationException($"length must be 2 or 4 but is {address.Length}");
+            }
+
+            if (typeof(TValue) == typeof(long))
+            {
+                var b = await s7Connector.ReadBytes(address.Operand, address.Start, address.Length, address.DbNr, token);
+                token.ThrowIfCancellationRequested();
+                Array.Reverse(b);
+                return (TValue)(object)BitConverter.ToInt64(b,0);
             }
 
             if (typeof(TValue) == typeof(ulong))
@@ -96,7 +105,7 @@ namespace Sharp7.Rx
                 var b = await s7Connector.ReadBytes(address.Operand, address.Start, address.Length, address.DbNr, token);
                 token.ThrowIfCancellationRequested();
                 Array.Reverse(b);
-                return (TValue)(object)Convert.ToUInt64(b);
+                return (TValue)(object)BitConverter.ToUInt64(b, 0);
             }
 
             if (typeof(TValue) == typeof(short))
@@ -125,7 +134,7 @@ namespace Sharp7.Rx
             {
                 var bytes = await s7Connector.ReadBytes(address.Operand, address.Start, 4, address.DbNr, token);
                 token.ThrowIfCancellationRequested();
-                var d = Convert.ToSingle(bytes);
+                var d = BitConverter.ToSingle(bytes.Reverse().ToArray(),0);
                 return (TValue)(object)d;
             }
 
