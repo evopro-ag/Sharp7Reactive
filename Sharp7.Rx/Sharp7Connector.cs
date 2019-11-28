@@ -20,21 +20,23 @@ namespace Sharp7.Rx
         private readonly string ipAddress;
         private readonly int rackNr;
         private readonly int cpuSlotNr;
-	    private readonly int port;
+        private readonly int port;
 
-	    private S7Client sharp7;
+        private S7Client sharp7;
         private bool disposed;
 
-		public ILogger Logger { get; set; }
+        public ILogger Logger { get; set; }
 
-		public Sharp7Connector(string ipAddress, int rackNr = 0, int cpuSlotNr = 2, int port = 102)
-		{
+        public object sharp7Lock = new object();
+
+        public Sharp7Connector(string ipAddress, int rackNr = 0, int cpuSlotNr = 2, int port = 102)
+        {
             this.ipAddress = ipAddress;
             this.cpuSlotNr = cpuSlotNr;
-			this.port = port;
-			this.rackNr = rackNr;
+            this.port = port;
+            this.rackNr = rackNr;
 
-			ReconnectDelay = TimeSpan.FromSeconds(5);
+            ReconnectDelay = TimeSpan.FromSeconds(5);
         }
 
         public TimeSpan ReconnectDelay { get; set; }
@@ -82,9 +84,9 @@ namespace Sharp7.Rx
             try
             {
                 sharp7 = new S7Client();
-	            sharp7.PLCPort = this.port;
+                sharp7.PLCPort = this.port;
 
-				var subscription =
+                var subscription =
                     ConnectionState
                         .Where(state => state == Enums.ConnectionState.ConnectionLost)
                         .Take(1)
@@ -97,8 +99,8 @@ namespace Sharp7.Rx
             }
             catch (Exception ex)
             {
-				Logger?.LogError(ex, StringResources.StrErrorS7DriverCouldNotBeInitialized);
-			}
+                Logger?.LogError(ex, StringResources.StrErrorS7DriverCouldNotBeInitialized);
+            }
 
             return Task.FromResult(true);
         }
@@ -178,8 +180,18 @@ namespace Sharp7.Rx
 
             var area = FromOperand(operand);
 
+            //ReadArea Should Have A Lock
+            //When Many Tasks Want to Read From The CPU
+            var func = (Func<int>)(() =>
+            {
+                lock (sharp7Lock)
+                {
+                    return sharp7.ReadArea(area, dBNr, startByteAddress, bytesToRead, S7Consts.S7WLByte, buffer);
+                }
+            });
+
             var result =
-                await Task.Factory.StartNew(() => sharp7.ReadArea(area, dBNr, startByteAddress, bytesToRead, S7Consts.S7WLByte, buffer), token, TaskCreationOptions.None, scheduler);
+                await Task.Factory.StartNew(func, token, TaskCreationOptions.None, scheduler);
             token.ThrowIfCancellationRequested();
 
             if (result != 0)
@@ -226,7 +238,17 @@ namespace Sharp7.Rx
         {
             EnsureConnectionValid();
 
-            var result = await Task.Factory.StartNew(() => sharp7.WriteArea(FromOperand(operand), dBNr, startByteAdress, data.Length, S7Consts.S7WLByte, data), token, TaskCreationOptions.None, scheduler);
+            //WriteArea Should Have A Lock
+            //When Many Tasks Want to Write To The CPU
+            var func = (Func<int>)(() =>
+            {
+                lock (sharp7Lock)
+                {
+                    return sharp7.WriteArea(FromOperand(operand), dBNr, startByteAdress, data.Length, S7Consts.S7WLByte, data);
+                }
+            });
+
+            var result = await Task.Factory.StartNew(func, token, TaskCreationOptions.None, scheduler);
             token.ThrowIfCancellationRequested();
 
             if (result != 0)
@@ -259,7 +281,17 @@ namespace Sharp7.Rx
 
             var offsetStart = (startByteAddress * 8) + bitAdress;
 
-            var result = await Task.Factory.StartNew(() => sharp7.WriteArea(FromOperand(operand), dbNr, offsetStart, 1, S7Consts.S7WLBit, buffer), token, TaskCreationOptions.None, scheduler);
+            //WriteArea Should Have A Lock
+            //When Many Tasks Want to Write To The CPU
+            var func = (Func<int>)(() =>
+            {
+                lock (sharp7Lock)
+                {
+                    return sharp7.WriteArea(FromOperand(operand), dbNr, offsetStart, 1, S7Consts.S7WLBit, buffer);
+                }
+            });
+
+            var result = await Task.Factory.StartNew(func, token, TaskCreationOptions.None, scheduler);
             token.ThrowIfCancellationRequested();
 
             if (result != 0)
