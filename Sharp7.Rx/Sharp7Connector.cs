@@ -185,7 +185,8 @@ namespace Sharp7.Rx
             if (result != 0)
             {
                 await EvaluateErrorCode(result);
-                throw new InvalidOperationException($"Error reading {operand}{dBNr}:{startByteAddress}->{bytesToRead}");
+                var errorText = this.sharp7.ErrorText(result);
+                throw new InvalidOperationException($"Error reading {operand}{dBNr}:{startByteAddress}->{bytesToRead} ({errorText})");
             }
 
             var retBuffer = new byte[bytesToRead];
