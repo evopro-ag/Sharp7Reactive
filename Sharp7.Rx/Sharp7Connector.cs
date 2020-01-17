@@ -142,7 +142,7 @@ namespace Sharp7.Rx
                 throw new InvalidOperationException(StringResources.StrErrorS7DriverNotInitialized);
 
             var errorText = sharp7.ErrorText(errorCode);
-
+            Logger.LogError($"Error Code {errorCode} {errorText}");
             await SetConnectionLostState();
 
             return false;
