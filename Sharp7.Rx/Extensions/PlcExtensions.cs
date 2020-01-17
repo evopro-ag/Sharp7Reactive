@@ -2,6 +2,7 @@
 using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
+using System.Reactive.Threading.Tasks;
 using System.Threading.Tasks;
 using Sharp7.Rx.Enums;
 using Sharp7.Rx.Interfaces;
@@ -23,6 +24,7 @@ namespace Sharp7.Rx.Extensions
 
                 if (initialTransfer)
                 {
+                    await plc.ConnectionState.FirstAsync(state => state == ConnectionState.Connected).ToTask();
                     var initialValue = await ReadData(plc, readData);
                     observer.OnNext(initialValue);
                 }

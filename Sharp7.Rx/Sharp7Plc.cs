@@ -57,9 +57,6 @@ namespace Sharp7.Rx
 
             await s7Connector.InitializeAsync();
             
-            RunNotifications(s7Connector, TimeSpan.FromMilliseconds(100))
-                .AddDisposableTo(Disposables);
-
 #pragma warning disable 4014
             Task.Run(async () =>
             {
@@ -67,13 +64,16 @@ namespace Sharp7.Rx
                 {
                     await s7Connector.Connect();
                 }
-                catch (Exception)
+                catch (Exception e)
                 {
-
+                    s7Connector.Logger.LogError(e, "Error while connecting to PLC");
                 }
             });
 #pragma warning restore 4014
 
+            RunNotifications(s7Connector, TimeSpan.FromMilliseconds(100))
+                .AddDisposableTo(Disposables);
+            
             return true;
         }
 
