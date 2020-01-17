@@ -1,4 +1,7 @@
 ﻿using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
@@ -9,12 +12,16 @@ using Sharp7.Rx.Enums;
 using Sharp7.Rx.Extensions;
 using Sharp7.Rx.Interfaces;
 using Sharp7.Rx.Resources;
+using Sharp7.Rx.Settings;
 
 namespace Sharp7.Rx
 {
     internal class Sharp7Connector : IS7Connector
     {
+        private readonly IS7VariableNameParser variableNameParser;
         private readonly BehaviorSubject<ConnectionState> connectionStateSubject = new BehaviorSubject<ConnectionState>(Enums.ConnectionState.Initial);
+        private ConcurrentDictionary<string, S7VariableAddress> s7VariableAddresses = new ConcurrentDictionary<string, S7VariableAddress>();
+
         private readonly CompositeDisposable disposables = new CompositeDisposable();
         private readonly TaskScheduler scheduler = TaskScheduler.Current;
         private readonly string ipAddress;
@@ -26,13 +33,43 @@ namespace Sharp7.Rx
         private bool disposed;
 
 		public ILogger Logger { get; set; }
+        public async Task<Dictionary<string, byte[]>> ExecuteMultiVarRequest(IEnumerable<string> variableNames)
+        {
+            var enumerable = variableNames as string[] ?? variableNames.ToArray();
 
-		public Sharp7Connector(string ipAddress, int rackNr = 0, int cpuSlotNr = 2, int port = 102)
+            if (enumerable.IsEmpty())
+                return new Dictionary<string, byte[]>();
+
+            var s7MultiVar = new S7MultiVar(sharp7);
+
+            var buffers = enumerable.Select(key => new {VariableName = key, Address = s7VariableAddresses.GetOrAdd(key, s => variableNameParser.Parse(s))})
+                .Select(x =>
+                {
+                    var buffer = new byte[x.Address.Length];
+                    s7MultiVar.Add(S7Consts.S7AreaDB, S7Consts.S7WLByte, x.Address.DbNr, x.Address.Start,x.Address.Length, ref buffer);
+                    return new { x.VariableName, Buffer = buffer};
+                })
+                .ToArray();
+
+            var result = await Task.Factory.StartNew(() => s7MultiVar.Read(), CancellationToken.None, TaskCreationOptions.None, scheduler);
+            if (result != 0)
+            {
+                await EvaluateErrorCode(result);
+                throw new InvalidOperationException($"Error in MultiVar request for variables: {string.Join(",", enumerable)}");
+            }
+
+            return buffers.ToDictionary(arg => arg.VariableName, arg => arg.Buffer);
+        }
+
+        
+        
+        public Sharp7Connector(PlcConnectionSettings settings, IS7VariableNameParser variableNameParser)
 		{
-            this.ipAddress = ipAddress;
-            this.cpuSlotNr = cpuSlotNr;
-			this.port = port;
-			this.rackNr = rackNr;
+            this.variableNameParser = variableNameParser;
+            this.ipAddress = settings.IpAddress;
+            this.cpuSlotNr = settings.CpuMpiAddress;
+			this.port = settings.Port;
+			this.rackNr = settings.Port;
 
 			ReconnectDelay = TimeSpan.FromSeconds(5);
         }
