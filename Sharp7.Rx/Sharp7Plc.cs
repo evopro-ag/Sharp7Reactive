@@ -49,10 +49,11 @@ namespace Sharp7.Rx
         }
 
         public IObservable<ConnectionState> ConnectionState { get; private set; }
+        public ILogger Logger { get; set; }
 
         public async Task<bool> InitializeAsync()
         {
-            s7Connector = new Sharp7Connector(plcConnectionSettings, varaibleNameParser);
+            s7Connector = new Sharp7Connector(plcConnectionSettings, varaibleNameParser){Logger = Logger};
             ConnectionState = s7Connector.ConnectionState;
 
             await s7Connector.InitializeAsync();
@@ -66,7 +67,7 @@ namespace Sharp7.Rx
                 }
                 catch (Exception e)
                 {
-                    s7Connector.Logger.LogError(e, "Error while connecting to PLC");
+                    Logger?.LogError(e, "Error while connecting to PLC");
                 }
             });
 #pragma warning restore 4014
@@ -387,7 +388,7 @@ namespace Sharp7.Rx
                 .Select(states => states == Enums.ConnectionState.Connected)
                 .SelectMany(connected => GetAllValues(connected, connector))
                 .RepeatAfterDelay(cycle)
-                .LogAndRetryAfterDelay(s7Connector.Logger, cycle, "Error while getting batch notifications from plc")
+                .LogAndRetryAfterDelay(Logger, cycle, "Error while getting batch notifications from plc")
                 .TakeUntil(disposingSubject)
                 .Subscribe();
         }
@@ -430,7 +431,7 @@ namespace Sharp7.Rx
                 var min = performanceCoutner.Min();
                 var max = performanceCoutner.Max();
 
-                s7Connector.Logger.LogInformation("Performance statistic during {0} elements of plc notification. Min: {1}, Max: {2}, Average: {3}, Plc: '{4}', Number of variables: {5}, Batch size: {6}", performanceCoutner.Capacity, min, max, average, plcConnectionSettings.IpAddress, multiVariableSubscriptions.ExistingKeys.Count(),
+                Logger?.LogInformation("Performance statistic during {0} elements of plc notification. Min: {1}, Max: {2}, Average: {3}, Plc: '{4}', Number of variables: {5}, Batch size: {6}", performanceCoutner.Capacity, min, max, average, plcConnectionSettings.IpAddress, multiVariableSubscriptions.ExistingKeys.Count(),
                             MultiVarRequestMaxItems);
                 performanceCoutner.Clear();
             }
