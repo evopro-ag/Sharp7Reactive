@@ -8,6 +8,7 @@ using System.Reactive.Subjects;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Sharp7.Rx.Basics;
 using Sharp7.Rx.Enums;
 using Sharp7.Rx.Extensions;
 using Sharp7.Rx.Interfaces;
@@ -23,7 +24,7 @@ namespace Sharp7.Rx
         private ConcurrentDictionary<string, S7VariableAddress> s7VariableAddresses = new ConcurrentDictionary<string, S7VariableAddress>();
 
         private readonly CompositeDisposable disposables = new CompositeDisposable();
-        private readonly TaskScheduler scheduler = TaskScheduler.Current;
+        private readonly LimitedConcurrencyLevelTaskScheduler scheduler = new LimitedConcurrencyLevelTaskScheduler(maxDegreeOfParallelism:1);
         private readonly string ipAddress;
         private readonly int rackNr;
         private readonly int cpuSlotNr;
