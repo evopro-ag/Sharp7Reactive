@@ -11,7 +11,7 @@ namespace Sharp7.Rx.Basics
     ///     running on top of the ThreadPool.
     ///     from http://msdn.microsoft.com/en-us/library/ee789351.aspx
     /// </summary>
-    public class LimitedConcurrencyLevelTaskScheduler : TaskScheduler
+    internal class LimitedConcurrencyLevelTaskScheduler : TaskScheduler
     {
         /// <summary>Whether the current thread is processing work items.</summary>
         [ThreadStatic] private static bool currentThreadIsProcessingItems;
