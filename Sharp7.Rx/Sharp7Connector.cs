@@ -69,7 +69,7 @@ namespace Sharp7.Rx
             this.ipAddress = settings.IpAddress;
             this.cpuSlotNr = settings.CpuMpiAddress;
 			this.port = settings.Port;
-			this.rackNr = settings.Port;
+			this.rackNr = settings.RackNumber;
 
 			ReconnectDelay = TimeSpan.FromSeconds(5);
         }
@@ -179,7 +179,7 @@ namespace Sharp7.Rx
                 throw new InvalidOperationException(StringResources.StrErrorS7DriverNotInitialized);
 
             var errorText = sharp7.ErrorText(errorCode);
-            Logger.LogError($"Error Code {errorCode} {errorText}");
+            Logger?.LogError($"Error Code {errorCode} {errorText}");
             await SetConnectionLostState();
 
             return false;
