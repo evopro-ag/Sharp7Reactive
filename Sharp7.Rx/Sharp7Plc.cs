@@ -14,7 +14,6 @@ using Sharp7.Rx.Basics;
 using Sharp7.Rx.Enums;
 using Sharp7.Rx.Extensions;
 using Sharp7.Rx.Interfaces;
-using Sharp7.Rx.Resources;
 using Sharp7.Rx.Settings;
 
 namespace Sharp7.Rx
@@ -431,7 +430,7 @@ namespace Sharp7.Rx
                 var min = performanceCoutner.Min();
                 var max = performanceCoutner.Max();
 
-                Logger?.LogInformation("Performance statistic during {0} elements of plc notification. Min: {1}, Max: {2}, Average: {3}, Plc: '{4}', Number of variables: {5}, Batch size: {6}", performanceCoutner.Capacity, min, max, average, plcConnectionSettings.IpAddress, multiVariableSubscriptions.ExistingKeys.Count(),
+                Logger?.LogTrace("Performance statistic during {0} elements of plc notification. Min: {1}, Max: {2}, Average: {3}, Plc: '{4}', Number of variables: {5}, Batch size: {6}", performanceCoutner.Capacity, min, max, average, plcConnectionSettings.IpAddress, multiVariableSubscriptions.ExistingKeys.Count(),
                             MultiVarRequestMaxItems);
                 performanceCoutner.Clear();
             }
