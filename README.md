@@ -1,6 +1,6 @@
 # Sharp7Reactive
 
-[![Build status](https://ci.appveyor.com/api/projects/status/91sbafe4y6c53fgi?svg=true)](https://ci.appveyor.com/project/fbarresi/sharp7reactive)
+[![.NET Core Build](https://github.com/evopro-ag/Sharp7Reactive/actions/workflows/dotnet-core.yml/badge.svg)](https://github.com/evopro-ag/Sharp7Reactive/actions/workflows/dotnet-core.yml)
 ![Licence](https://img.shields.io/github/license/evopro-ag/Sharp7Reactive.svg)
 [![Nuget Version](https://img.shields.io/nuget/v/Sharp7.Rx.svg)](https://www.nuget.org/packages/Sharp7.Rx/)
 
