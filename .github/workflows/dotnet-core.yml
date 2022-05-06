@@ -1,0 +1,38 @@
+name: .NET Core Build
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 5.0.x
+    - name: Install dependencies
+      run: dotnet restore
+    - name: Build
+      run: dotnet build --configuration Release --no-restore
+    - name: NugetPublish
+      run: dotnet nuget push Sharp7.Rx\bin\Release\Sharp7.Rx.1.1.${{ github.run_number }}.nupkg -s https://api.nuget.org/v3/index.json -k ${{ secrets.NUGET_DEPLOY_KEY }}
+    - name: Test
+      run: dotnet test --no-restore --verbosity normal
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: 1.1.${{ github.run_number }}
+        release_name: 1.1.${{ github.run_number }}
+        draft: false
+        prerelease: true
