@@ -23,7 +23,7 @@ jobs:
     - name: Build
       run: dotnet build --configuration Release --no-restore /p:version=1.1.${{ github.run_number }}
     - name: NugetPublish
-      run: dotnet nuget push Sharp7Reactive\Sharp7.Rx\bin\Release\Sharp7.Rx.1.1.${{ github.run_number }}.nupkg -s https://api.nuget.org/v3/index.json -k ${{ secrets.NUGET_DEPLOY_KEY }}
+      run: dotnet nuget push Sharp7.Rx\bin\Release\Sharp7.Rx.1.1.${{ github.run_number }}.nupkg -s https://api.nuget.org/v3/index.json -k ${{ secrets.NUGET_DEPLOY_KEY }}
     - name: Test
       run: dotnet test --no-restore --verbosity normal
     - name: Create Release
