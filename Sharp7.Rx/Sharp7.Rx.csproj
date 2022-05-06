@@ -4,9 +4,8 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
-    <Version>1.0.0</Version>
-    <Authors>Federico Barresi</Authors>
-    <Company>evopro AG</Company>
+    <Authors>evopro system engineering AG</Authors>
+    <Company>evopro system engineering AG</Company>
     <Description>Reactive framework for Sharp7, the Ethernet S7 PLC communication suite</Description>
     <PackageProjectUrl>https://github.com/evopro-ag/Sharp7Reactive</PackageProjectUrl>
     <PackageLicenseUrl>https://raw.githubusercontent.com/evopro-ag/Sharp7Reactive/master/LICENSE</PackageLicenseUrl>
