@@ -186,7 +186,7 @@ this.ScenarioInitialize(scenarioInfo);
                         "Db",
                         "506",
                         "216",
-                        "0",
+                        "4",
                         "0",
                         "Double"});
             table2.AddRow(new string[] {
