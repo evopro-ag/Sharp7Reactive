@@ -74,6 +74,10 @@ namespace Sharp7.Rx
                 {
                     s7VariableAddress.Length = 8;
                 }
+                else if (type == DbType.Double)
+                {
+                    s7VariableAddress.Length = 4;
+                }
 
                 return s7VariableAddress;
             }

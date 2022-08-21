@@ -31,7 +31,7 @@ Scenario: Parsing variable name for bool
 	| Db      | 5    | 887   | 20     | 0   | String   |
 	| Db      | 506  | 216   | 1      | 0   | Byte     |
 	| Db      | 506  | 216   | 5      | 0   | Byte     |
-	| Db      | 506  | 216   | 0      | 0   | Double   |
+	| Db      | 506  | 216   | 4      | 0   | Double   |
 	| Db      | 506  | 216   | 4      | 0   | DInteger |
 	| Db      | 506  | 216   | 2      | 0   | Integer  |
 	| Db      | 506  | 216   | 2      | 0   | Integer  |
