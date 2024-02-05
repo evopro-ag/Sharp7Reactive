@@ -10,7 +10,7 @@ namespace Sharp7.Rx
 {
     internal class S7VariableNameParser : IS7VariableNameParser
     {
-        private readonly Regex regex = new Regex(@"^(?<operand>db{1})(?<dbNr>\d{1,4})\.?(?<type>dbx|x|s|string|b|dbb|d|int|dbw|w|dint|dul|dulint|dulong|){1}(?<start>\d+)(\.(?<bitOrLength>\d+))?$", RegexOptions.IgnoreCase);
+        private static readonly Regex regex = new Regex(@"^(?<operand>db{1})(?<dbNr>\d{1,4})\.?(?<type>dbx|x|s|string|b|dbb|d|int|dbw|w|dint|dul|dulint|dulong|){1}(?<start>\d+)(\.(?<bitOrLength>\d+))?$", RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
         private readonly Dictionary<string, DbType> types = new Dictionary<string, DbType>
         {
