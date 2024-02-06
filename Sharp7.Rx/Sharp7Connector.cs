@@ -52,7 +52,7 @@ namespace Sharp7.Rx
             var result = await Task.Factory.StartNew(() => s7MultiVar.Read(), CancellationToken.None, TaskCreationOptions.None, scheduler);
             if (result != 0)
             {
-                await EvaluateErrorCode(result);
+                EvaluateErrorCode(result);
                 throw new InvalidOperationException($"Error in MultiVar request for variables: {string.Join(",", variableNames)}");
             }
 
@@ -88,7 +88,7 @@ namespace Sharp7.Rx
             try
             {
                 var errorCode = await Task.Factory.StartNew(() => sharp7.ConnectTo(ipAddress, rackNr, cpuSlotNr), CancellationToken.None, TaskCreationOptions.None, scheduler);
-                var success = await EvaluateErrorCode(errorCode);
+                var success = EvaluateErrorCode(errorCode);
                 if (success)
                 {
                     connectionStateSubject.OnNext(Enums.ConnectionState.Connected);
@@ -168,7 +168,7 @@ namespace Sharp7.Rx
             await Task.Factory.StartNew(() => sharp7.Disconnect(), CancellationToken.None, TaskCreationOptions.None, scheduler);
         }
 
-        private async Task<bool> EvaluateErrorCode(int errorCode)
+        private bool EvaluateErrorCode(int errorCode)
         {
             if (errorCode == 0)
                 return true;
@@ -178,7 +178,9 @@ namespace Sharp7.Rx
 
             var errorText = sharp7.ErrorText(errorCode);
             Logger?.LogError($"Error Code {errorCode} {errorText}");
-            await SetConnectionLostState();
+
+            if (S7ErrorCodes.AssumeConnectionLost(errorCode))
+                SetConnectionLostState();
 
             return false;
         }
@@ -190,10 +192,9 @@ namespace Sharp7.Rx
             return await Connect();
         }
 
-        private async Task SetConnectionLostState()
+        private void SetConnectionLostState()
         {
-            var state = await connectionStateSubject.FirstAsync();
-            if (state == Enums.ConnectionState.ConnectionLost) return;
+            if (connectionStateSubject.Value == Enums.ConnectionState.ConnectionLost) return;
 
             connectionStateSubject.OnNext(Enums.ConnectionState.ConnectionLost);
         }
@@ -219,7 +220,7 @@ namespace Sharp7.Rx
 
             if (result != 0)
             {
-                await EvaluateErrorCode(result);
+                EvaluateErrorCode(result);
                 var errorText = sharp7.ErrorText(result);
                 throw new InvalidOperationException($"Error reading {operand}{dBNr}:{startByteAddress}->{bytesToRead} ({errorText})");
             }
@@ -265,7 +266,7 @@ namespace Sharp7.Rx
 
             if (result != 0)
             {
-                await EvaluateErrorCode(result);
+                EvaluateErrorCode(result);
                 return 0;
             }
             return (ushort)(data.Length);
@@ -283,7 +284,7 @@ namespace Sharp7.Rx
 
             if (result != 0)
             {
-                await EvaluateErrorCode(result);
+                EvaluateErrorCode(result);
                 return (false);
             }
             return (true);
