@@ -20,7 +20,7 @@ public class S7ValueConverterTests
     [TestCase((char) 18, "DB0.DBB0", new byte[] {0x12})]
     [TestCase((short) 4660, "DB0.INT0", new byte[] {0x12, 0x34})]
     [TestCase((short) -3532, "DB0.INT0", new byte[] {0xF2, 0x34})]
-    [TestCase(62004, "DB0.INT0", new byte[] {0xF2, 0x34})]
+    [TestCase(-3532, "DB0.INT0", new byte[] {0xF2, 0x34})]
     [TestCase(305419879, "DB0.DINT0", new byte[] {0x12, 0x34, 0x56, 0x67})]
     [TestCase(-231451033, "DB0.DINT0", new byte[] {0xF2, 0x34, 0x56, 0x67})]
     [TestCase(1311768394163015151L, "DB0.dul0", new byte[] {0x12, 0x34, 0x56, 0x67, 0x89, 0xAB, 0xCD, 0xEF})]
