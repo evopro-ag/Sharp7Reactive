@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Disposables;
@@ -54,7 +53,7 @@ namespace Sharp7.Rx
             if (result != 0)
             {
                 await EvaluateErrorCode(result);
-                throw new InvalidOperationException($"Error in MultiVar request for variables: {string.Join(",", enumerable)}");
+                throw new InvalidOperationException($"Error in MultiVar request for variables: {string.Join(",", variableNames)}");
             }
 
             return buffers.ToDictionary(arg => arg.VariableName, arg => arg.Buffer);
@@ -225,9 +224,7 @@ namespace Sharp7.Rx
                 throw new InvalidOperationException($"Error reading {operand}{dBNr}:{startByteAddress}->{bytesToRead} ({errorText})");
             }
 
-            var retBuffer = new byte[bytesToRead];
-            Array.Copy(buffer, 0, retBuffer, 0, bytesToRead);
-            return (retBuffer);
+            return buffer;
         }
 
         private int FromOperand(Operand operand)
@@ -269,7 +266,7 @@ namespace Sharp7.Rx
             if (result != 0)
             {
                 await EvaluateErrorCode(result);
-                return (0);
+                return 0;
             }
             return (ushort)(data.Length);
         }
