@@ -153,6 +153,7 @@ namespace Sharp7.Rx
                         sharp7 = null;
                     }
 
+                    connectionStateSubject?.OnCompleted();
                     connectionStateSubject?.Dispose();
                 }
 
