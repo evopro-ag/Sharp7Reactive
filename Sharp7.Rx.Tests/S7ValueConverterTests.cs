@@ -31,6 +31,7 @@ public class S7ValueConverterTests
     [TestCase(0.25f, "DB0.D0", new byte[] {0x3E, 0x80, 0x00, 0x00})]
     [TestCase(0.25, "DB0.D0", new byte[] {0x3E, 0x80, 0x00, 0x00})]
     [TestCase("ABCD", "DB0.string0.4", new byte[] {0x00, 0x04, 0x41, 0x42, 0x43, 0x44})]
+    [TestCase("ABCD", "DB0.string0.4", new byte[] {0x00, 0xF0, 0x41, 0x42, 0x43, 0x44})] // Clip to length in Address
     [TestCase("ABCD", "DB0.DBB0.4", new byte[] {0x41, 0x42, 0x43, 0x44})]
     public void Parse<T>(T expected, string address, byte[] data)
     {

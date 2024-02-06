@@ -63,7 +63,13 @@ namespace Sharp7.Rx
             if (typeof(TValue) == typeof(string))
                 if (address.Type == DbType.String)
                 {
-                    return (TValue) (object) Encoding.ASCII.GetString(buffer);
+                    // First byte is maximal length
+                    // Second byte is actual length
+                    // https://cache.industry.siemens.com/dl/files/480/22506480/att_105176/v1/s7_scl_string_parameterzuweisung_e.pdf
+
+                    var length = Math.Min(address.Length, buffer[1]);
+                    
+                    return (TValue) (object) Encoding.ASCII.GetString(buffer, 2, length);
                 }
                 else
                 {
