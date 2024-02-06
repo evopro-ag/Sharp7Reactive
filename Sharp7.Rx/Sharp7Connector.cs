@@ -21,7 +21,6 @@ namespace Sharp7.Rx
     {
         private readonly IS7VariableNameParser variableNameParser;
         private readonly BehaviorSubject<ConnectionState> connectionStateSubject = new BehaviorSubject<ConnectionState>(Enums.ConnectionState.Initial);
-        private ConcurrentDictionary<string, S7VariableAddress> s7VariableAddresses = new ConcurrentDictionary<string, S7VariableAddress>();
 
         private readonly CompositeDisposable disposables = new CompositeDisposable();
         private readonly LimitedConcurrencyLevelTaskScheduler scheduler = new LimitedConcurrencyLevelTaskScheduler(maxDegreeOfParallelism:1);
@@ -34,16 +33,15 @@ namespace Sharp7.Rx
         private bool disposed;
 
 		public ILogger Logger { get; set; }
-        public async Task<Dictionary<string, byte[]>> ExecuteMultiVarRequest(IEnumerable<string> variableNames)
+        public async Task<Dictionary<string, byte[]>> ExecuteMultiVarRequest(IReadOnlyList<string> variableNames)
         {
-            var enumerable = variableNames as string[] ?? variableNames.ToArray();
-
-            if (enumerable.IsEmpty())
+            if (variableNames.IsEmpty())
                 return new Dictionary<string, byte[]>();
 
             var s7MultiVar = new S7MultiVar(sharp7);
 
-            var buffers = enumerable.Select(key => new {VariableName = key, Address = s7VariableAddresses.GetOrAdd(key, s => variableNameParser.Parse(s))})
+            var buffers = variableNames
+                .Select(key => new {VariableName = key, Address = variableNameParser.Parse(key)})
                 .Select(x =>
                 {
                     var buffer = new byte[x.Address.Length];
@@ -67,10 +65,10 @@ namespace Sharp7.Rx
         public Sharp7Connector(PlcConnectionSettings settings, IS7VariableNameParser variableNameParser)
 		{
             this.variableNameParser = variableNameParser;
-            this.ipAddress = settings.IpAddress;
-            this.cpuSlotNr = settings.CpuMpiAddress;
-			this.port = settings.Port;
-			this.rackNr = settings.RackNumber;
+            ipAddress = settings.IpAddress;
+            cpuSlotNr = settings.CpuMpiAddress;
+			port = settings.Port;
+			rackNr = settings.RackNumber;
 
 			ReconnectDelay = TimeSpan.FromSeconds(5);
         }
@@ -120,7 +118,7 @@ namespace Sharp7.Rx
             try
             {
                 sharp7 = new S7Client();
-	            sharp7.PLCPort = this.port;
+	            sharp7.PLCPort = port;
 
 				var subscription =
                     ConnectionState
@@ -223,7 +221,7 @@ namespace Sharp7.Rx
             if (result != 0)
             {
                 await EvaluateErrorCode(result);
-                var errorText = this.sharp7.ErrorText(result);
+                var errorText = sharp7.ErrorText(result);
                 throw new InvalidOperationException($"Error reading {operand}{dBNr}:{startByteAddress}->{bytesToRead} ({errorText})");
             }
 

@@ -20,11 +20,7 @@ namespace Sharp7.Rx
 {
     public class Sharp7Plc : IPlc
     {
-        private readonly string ipAddress;
-        private readonly int rackNumber;
-        private readonly int cpuMpiAddress;
-        private readonly int port;
-        private readonly IS7VariableNameParser varaibleNameParser;
+        private readonly IS7VariableNameParser varaibleNameParser = new CacheVariableNameParser(new S7VariableNameParser());
         private bool disposed;
         private ISubject<Unit> disposingSubject = new Subject<Unit>();
         private IS7Connector s7Connector;
@@ -37,14 +33,7 @@ namespace Sharp7.Rx
 
         public Sharp7Plc(string ipAddress, int rackNumber, int cpuMpiAddress, int port = 102)
         {
-            this.ipAddress = ipAddress;
-            this.rackNumber = rackNumber;
-            this.cpuMpiAddress = cpuMpiAddress;
-            this.port = port;
-            
             plcConnectionSettings = new PlcConnectionSettings(){IpAddress = ipAddress, RackNumber = rackNumber, CpuMpiAddress = cpuMpiAddress, Port = port};
-
-            varaibleNameParser = new S7VariableNameParser();
         }
 
         public IObservable<ConnectionState> ConnectionState { get; private set; }
@@ -403,7 +392,7 @@ namespace Sharp7.Rx
             var stopWatch = Stopwatch.StartNew();
             foreach (var partsOfMultiVarRequest in multiVariableSubscriptions.ExistingKeys.Buffer(MultiVarRequestMaxItems))
             {
-                var multiVarRequest = await connector.ExecuteMultiVarRequest(partsOfMultiVarRequest);
+                var multiVarRequest = await connector.ExecuteMultiVarRequest(partsOfMultiVarRequest as IReadOnlyList<string>??partsOfMultiVarRequest.ToList());
 
                 foreach (var pair in multiVarRequest)
                 {
