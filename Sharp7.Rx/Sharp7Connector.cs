@@ -270,21 +270,6 @@ namespace Sharp7.Rx
             }
             return (ushort)(data.Length);
         }
-
-
-        public async Task<bool> ReadBit(Operand operand, ushort byteAddress, byte bitAdress, ushort dbNr, CancellationToken token)
-        {
-            EnsureConnectionValid();
-
-            var byteValue = await ReadBytes(operand, byteAddress, 1, dbNr, token);
-            token.ThrowIfCancellationRequested();
-
-            if (byteValue.Length != 1)
-                throw new InvalidOperationException("Read bytes does not have length 1");
-
-            return Convert.ToBoolean(byteValue[0] & (1 << bitAdress));
-        }
-
         public async Task<bool> WriteBit(Operand operand, ushort startByteAddress, byte bitAdress, bool value, ushort dbNr, CancellationToken token)
         {
             EnsureConnectionValid();

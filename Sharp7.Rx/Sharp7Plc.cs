@@ -144,9 +144,8 @@ namespace Sharp7.Rx
 
             if (typeof(TValue) == typeof(bool))
             {
-                var b = await s7Connector.ReadBit(address.Operand, address.Start, address.Bit, address.DbNr, token);
-                token.ThrowIfCancellationRequested();
-                return (TValue)(object)b;
+                var b = await s7Connector.ReadBytes(address.Operand, address.Start, address.Length, address.DbNr, token);
+                return ConvertToType<TValue>(b, address);
             }
 
             if (typeof(TValue) == typeof(int))

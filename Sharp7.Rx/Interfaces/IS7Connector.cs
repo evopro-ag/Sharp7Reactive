@@ -14,7 +14,6 @@ namespace Sharp7.Rx.Interfaces
         Task<bool> Connect();
         Task Disconnect();
 
-        Task<bool> ReadBit(Operand operand, ushort byteAddress, byte bitAdress, ushort dbNr, CancellationToken token);
         Task<byte[]> ReadBytes(Operand operand, ushort startByteAddress, ushort bytesToRead, ushort dBNr, CancellationToken token);
 
         Task<bool> WriteBit(Operand operand, ushort startByteAddress, byte bitAdress, bool value, ushort dbNr, CancellationToken token);
