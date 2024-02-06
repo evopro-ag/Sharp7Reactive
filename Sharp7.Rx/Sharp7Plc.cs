@@ -71,71 +71,7 @@ namespace Sharp7.Rx
             return GetValue<TValue>(variableName, CancellationToken.None);
         }
 
-        private TValue ConvertToType<TValue>(byte[] buffer, S7VariableAddress address)
-        {
-            if (typeof(TValue) == typeof(bool))
-            {
-                return (TValue) (object) Convert.ToBoolean(buffer[0] & (1 << address.Bit));
-            }
 
-            if (typeof(TValue) == typeof(int))
-            {
-                if (address.Length == 2)
-                    return (TValue)(object)((buffer[0] << 8) + buffer[1]);
-                if (address.Length == 4)
-                {
-                    Array.Reverse(buffer);
-                    return (TValue)(object)BitConverter.ToInt32(buffer,0);
-                }
-
-                throw new InvalidOperationException($"length must be 2 or 4 but is {address.Length}");
-            }
-
-            if (typeof(TValue) == typeof(long))
-            {
-                Array.Reverse(buffer);
-                return (TValue)(object)BitConverter.ToInt64(buffer,0);
-            }
-
-            if (typeof(TValue) == typeof(ulong))
-            {
-                Array.Reverse(buffer);
-                return (TValue)(object)BitConverter.ToUInt64(buffer, 0);
-            }
-
-            if (typeof(TValue) == typeof(short))
-            {
-                return (TValue)(object)(short)((buffer[0] << 8) + buffer[1]);
-            }
-
-            if (typeof(TValue) == typeof(byte) || typeof(TValue) == typeof(char))
-            {
-                return (TValue)(object)buffer[0];
-            }
-
-            if (typeof(TValue) == typeof(byte[]))
-            {
-                return (TValue)(object)buffer;
-            }
-
-            if (typeof(TValue) == typeof(double) || typeof(TValue) == typeof(float))
-            {
-                var d = BitConverter.ToSingle(buffer.Reverse().ToArray(),0);
-                return (TValue)(object)d;
-            }
-
-            if (typeof(TValue) == typeof(string))
-                if (address.Type == DbType.String)
-                {
-                    return (TValue) (object) Encoding.ASCII.GetString(buffer);
-                }
-                else
-                {
-                    return (TValue) (object) Encoding.ASCII.GetString(buffer).Trim();
-                }
-
-            throw new InvalidOperationException(string.Format("type '{0}' not supported.", typeof(TValue)));
-        }
         
         public async Task<TValue> GetValue<TValue>(string variableName, CancellationToken token)
         {
@@ -143,7 +79,7 @@ namespace Sharp7.Rx
             if (address == null) throw new ArgumentException("Input variable name is not valid", nameof(variableName));
 
             var data = await s7Connector.ReadBytes(address.Operand, address.Start, address.Length, address.DbNr, token);
-            return ConvertToType<TValue>(data, address);
+            return S7ValueConverter.ConvertToType<TValue>(data, address);
         }
 
 
@@ -231,7 +167,7 @@ namespace Sharp7.Rx
                 disposeableContainer.AddDisposableTo(disposables);
 
                 var observable = disposeableContainer.Observable
-                    .Select(bytes => ConvertToType<TValue>(bytes, address));
+                    .Select(bytes => S7ValueConverter.ConvertToType<TValue>(bytes, address));
 
                 if (transmissionMode == TransmissionMode.OnChange)
                     observable = observable.DistinctUntilChanged();
