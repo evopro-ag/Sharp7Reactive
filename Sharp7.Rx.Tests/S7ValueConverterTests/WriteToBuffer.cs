@@ -2,10 +2,10 @@
 using Sharp7.Rx.Interfaces;
 using Shouldly;
 
-namespace Sharp7.Rx.Tests;
+namespace Sharp7.Rx.Tests.S7ValueConverterTests;
 
 [TestFixture]
-public class S7ValueConverterTests
+public class WriteToBuffer
 {
     static readonly IS7VariableNameParser parser = new S7VariableNameParser();
 
@@ -32,35 +32,16 @@ public class S7ValueConverterTests
     [TestCase("ABCD", "DB0.string0.4", new byte[] {0x00, 0x04, 0x41, 0x42, 0x43, 0x44})]
     [TestCase("ABCD", "DB0.string0.4", new byte[] {0x00, 0xF0, 0x41, 0x42, 0x43, 0x44})] // Clip to length in Address
     [TestCase("ABCD", "DB0.DBB0.4", new byte[] {0x41, 0x42, 0x43, 0x44})]
-    public void Parse<T>(T expected, string address, byte[] data)
+    public void Write<T>(T expected, string address, byte[] data)
     {
         //Arrange
         var variableAddress = parser.Parse(address);
+        var buffer = new byte[variableAddress.Length];
 
         //Act
-        var result = S7ValueConverter.ConvertToType<T>(data, variableAddress);
+        S7ValueConverter.WriteToBuffer(buffer, expected, variableAddress);
 
         //Assert
-        result.ShouldBe(expected);
-    }
-
-    [TestCase((ushort) 3532, "DB0.INT0", new byte[] {0xF2, 0x34})]
-    public void Invalid<T>(T expected, string address, byte[] data)
-    {
-        //Arrange
-        var variableAddress = parser.Parse(address);
-
-        //Act
-        Should.Throw<InvalidOperationException>(() => S7ValueConverter.ConvertToType<T>(data, variableAddress));
-    }
-
-    [TestCase(3532, "DB0.DINT0", new byte[] {0xF2, 0x34})]
-    public void Argument<T>(T expected, string address, byte[] data)
-    {
-        //Arrange
-        var variableAddress = parser.Parse(address);
-
-        //Act
-        Should.Throw<ArgumentException>(() => S7ValueConverter.ConvertToType<T>(data, variableAddress));
+        buffer.ShouldBe(data);
     }
 }
