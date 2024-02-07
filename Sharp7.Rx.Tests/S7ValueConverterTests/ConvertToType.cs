@@ -16,7 +16,6 @@ public class ConvertToType
     [TestCase(true, "DB0.DBx0.4", new byte[] {0x1F})]
     [TestCase(false, "DB0.DBx0.4", new byte[] {0xEF})]
     [TestCase((byte) 18, "DB0.DBB0", new byte[] {0x12})]
-    [TestCase((char) 18, "DB0.DBB0", new byte[] {0x12})]
     [TestCase((short) 4660, "DB0.INT0", new byte[] {0x12, 0x34})]
     [TestCase((short) -3532, "DB0.INT0", new byte[] {0xF2, 0x34})]
     [TestCase(-3532, "DB0.INT0", new byte[] {0xF2, 0x34})]
@@ -28,7 +27,6 @@ public class ConvertToType
     [TestCase(17452669458658872815uL, "DB0.dul0", new byte[] {0xF2, 0x34, 0x56, 0x67, 0x89, 0xAB, 0xCD, 0xEF})]
     [TestCase(new byte[] {0x12, 0x34, 0x56, 0x67}, "DB0.DBB0.4", new byte[] {0x12, 0x34, 0x56, 0x67})]
     [TestCase(0.25f, "DB0.D0", new byte[] {0x3E, 0x80, 0x00, 0x00})]
-    [TestCase(0.25, "DB0.D0", new byte[] {0x3E, 0x80, 0x00, 0x00})]
     [TestCase("ABCD", "DB0.string0.4", new byte[] {0x00, 0x04, 0x41, 0x42, 0x43, 0x44})]
     [TestCase("ABCD", "DB0.string0.4", new byte[] {0x00, 0xF0, 0x41, 0x42, 0x43, 0x44})] // Clip to length in Address
     [TestCase("ABCD", "DB0.DBB0.4", new byte[] {0x41, 0x42, 0x43, 0x44})]
@@ -44,8 +42,10 @@ public class ConvertToType
         result.ShouldBe(expected);
     }
 
+    [TestCase((char) 18, "DB0.DBB0", new byte[] {0x12})]
     [TestCase((ushort) 3532, "DB0.INT0", new byte[] {0xF2, 0x34})]
-    public void Invalid<T>(T expected, string address, byte[] data)
+    [TestCase(0.25, "DB0.D0", new byte[] {0x3E, 0x80, 0x00, 0x00})]
+    public void Invalid<T>(T template, string address, byte[] data)
     {
         //Arrange
         var variableAddress = parser.Parse(address);
@@ -55,7 +55,7 @@ public class ConvertToType
     }
 
     [TestCase(3532, "DB0.DINT0", new byte[] {0xF2, 0x34})]
-    public void Argument<T>(T expected, string address, byte[] data)
+    public void Argument<T>(T template, string address, byte[] data)
     {
         //Arrange
         var variableAddress = parser.Parse(address);

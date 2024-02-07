@@ -12,4 +12,6 @@ internal class S7VariableAddress
     public ushort Length { get; set; }
     public byte Bit { get; set; }
     public DbType Type { get; set; }
+
+    public ushort BufferLength => Type == DbType.String ? (ushort)(Length + 2) : Length;
 }
