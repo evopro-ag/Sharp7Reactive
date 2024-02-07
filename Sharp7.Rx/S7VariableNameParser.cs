@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
 using System.Text.RegularExpressions;
 using Sharp7.Rx.Enums;
 using Sharp7.Rx.Interfaces;
@@ -25,9 +24,9 @@ namespace Sharp7.Rx
             {"dint", DbType.DInteger},
             {"w", DbType.Integer},
             {"dbw", DbType.Integer},
-            {"dul", DbType.ULong },
-            {"dulint", DbType.ULong },
-            {"dulong", DbType.ULong }
+            {"dul", DbType.ULong},
+            {"dulint", DbType.ULong},
+            {"dulong", DbType.ULong}
         };
 
         public S7VariableAddress Parse(string input)
@@ -35,7 +34,7 @@ namespace Sharp7.Rx
             var match = regex.Match(input);
             if (match.Success)
             {
-                var operand = (Operand)Enum.Parse(typeof(Operand), match.Groups["operand"].Value, true);
+                var operand = (Operand) Enum.Parse(typeof(Operand), match.Groups["operand"].Value, true);
                 var dbNr = ushort.Parse(match.Groups["dbNr"].Value, NumberStyles.Integer, CultureInfo.InvariantCulture);
                 var start = ushort.Parse(match.Groups["start"].Value, NumberStyles.Integer, CultureInfo.InvariantCulture);
                 if (!types.TryGetValue(match.Groups["type"].Value, out var type))
@@ -57,10 +56,10 @@ namespace Sharp7.Rx
                         s7VariableAddress.Bit = byte.Parse(match.Groups["bitOrLength"].Value);
                         break;
                     case DbType.Byte:
-                        s7VariableAddress.Length = match.Groups["bitOrLength"].Success ? ushort.Parse(match.Groups["bitOrLength"].Value) : (ushort)1;
+                        s7VariableAddress.Length = match.Groups["bitOrLength"].Success ? ushort.Parse(match.Groups["bitOrLength"].Value) : (ushort) 1;
                         break;
                     case DbType.String:
-                        s7VariableAddress.Length = match.Groups["bitOrLength"].Success ? ushort.Parse(match.Groups["bitOrLength"].Value) : (ushort)0;
+                        s7VariableAddress.Length = match.Groups["bitOrLength"].Success ? ushort.Parse(match.Groups["bitOrLength"].Value) : (ushort) 0;
                         break;
                     case DbType.Integer:
                         s7VariableAddress.Length = 2;

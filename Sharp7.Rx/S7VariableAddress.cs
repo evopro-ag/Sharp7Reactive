@@ -1,7 +1,9 @@
-﻿using Sharp7.Rx.Enums;
+﻿using JetBrains.Annotations;
+using Sharp7.Rx.Enums;
 
 namespace Sharp7.Rx
 {
+    [NoReorder]
     internal class S7VariableAddress
     {
         public Operand Operand { get; set; }

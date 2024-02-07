@@ -38,10 +38,10 @@ namespace Sharp7.Rx.Extensions
                 notification
                     .Where(trigger => !trigger)
                     .SelectMany(async _ =>
-                        {
-                            await plc.SetValue(ackTriggerAddress, false);
-                            return Unit.Default;
-                        })
+                    {
+                        await plc.SetValue(ackTriggerAddress, false);
+                        return Unit.Default;
+                    })
                     .Subscribe()
                     .AddDisposableTo(subscriptions);
 

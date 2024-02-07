@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
-using Sharp7.Rx.Extensions;
 
 namespace Sharp7.Rx.Basics
 {
@@ -85,7 +84,7 @@ namespace Sharp7.Rx.Basics
                 return;
             if (disposing && dictionary != null)
             {
-                foreach (var subjectWithRefCounter in dictionary) 
+                foreach (var subjectWithRefCounter in dictionary)
                     subjectWithRefCounter.Value.Subject.OnCompleted();
                 dictionary.Clear();
                 dictionary = null;

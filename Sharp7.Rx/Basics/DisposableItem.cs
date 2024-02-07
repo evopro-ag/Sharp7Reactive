@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 
 namespace Sharp7.Rx.Basics
 {

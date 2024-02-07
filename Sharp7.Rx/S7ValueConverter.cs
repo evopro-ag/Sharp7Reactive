@@ -35,7 +35,7 @@ namespace Sharp7.Rx
             if (typeof(TValue) == typeof(byte))
                 return (TValue) (object) buffer[0];
             if (typeof(TValue) == typeof(char))
-                return (TValue) (object) (char)buffer[0];
+                return (TValue) (object) (char) buffer[0];
 
             if (typeof(TValue) == typeof(byte[]))
                 return (TValue) (object) buffer;
@@ -46,7 +46,7 @@ namespace Sharp7.Rx
                 {
                     UInt32 = BinaryPrimitives.ReadUInt32BigEndian(buffer)
                 };
-                return (TValue) (object) (double)d.Single;
+                return (TValue) (object) (double) d.Single;
             }
 
             if (typeof(TValue) == typeof(float))

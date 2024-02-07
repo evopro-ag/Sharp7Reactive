@@ -19,13 +19,13 @@ namespace Sharp7.Rx
 {
     public class Sharp7Plc : IPlc
     {
+        protected readonly CompositeDisposable Disposables = new CompositeDisposable();
+        private readonly ConcurrentSubjectDictionary<string, byte[]> multiVariableSubscriptions = new ConcurrentSubjectDictionary<string, byte[]>(StringComparer.InvariantCultureIgnoreCase);
+        private readonly List<long> performanceCoutner = new List<long>(1000);
+        private readonly PlcConnectionSettings plcConnectionSettings;
         private readonly IS7VariableNameParser varaibleNameParser = new CacheVariableNameParser(new S7VariableNameParser());
         private bool disposed;
         private IS7Connector s7Connector;
-        private readonly PlcConnectionSettings plcConnectionSettings;
-        private readonly ConcurrentSubjectDictionary<string, byte[]> multiVariableSubscriptions = new ConcurrentSubjectDictionary<string, byte[]>(StringComparer.InvariantCultureIgnoreCase);
-        protected readonly CompositeDisposable Disposables = new CompositeDisposable();
-        private readonly List<long> performanceCoutner = new List<long>(1000);
 
 
         /// <summary>
@@ -48,7 +48,7 @@ namespace Sharp7.Rx
         /// </param>
         public Sharp7Plc(string ipAddress, int rackNumber, int cpuMpiAddress, int port = 102, TimeSpan? multiVarRequestCycleTime = null)
         {
-            plcConnectionSettings = new PlcConnectionSettings() { IpAddress = ipAddress, RackNumber = rackNumber, CpuMpiAddress = cpuMpiAddress, Port = port };
+            plcConnectionSettings = new PlcConnectionSettings {IpAddress = ipAddress, RackNumber = rackNumber, CpuMpiAddress = cpuMpiAddress, Port = port};
 
             if (multiVarRequestCycleTime != null && multiVarRequestCycleTime > TimeSpan.FromMilliseconds(5))
                 MultiVarRequestCycleTime = multiVarRequestCycleTime.Value;
@@ -56,121 +56,14 @@ namespace Sharp7.Rx
 
         public IObservable<ConnectionState> ConnectionState { get; private set; }
         public ILogger Logger { get; set; }
+        public TimeSpan MultiVarRequestCycleTime { get; } = TimeSpan.FromSeconds(0.1);
 
-        public async Task<bool> InitializeAsync()
+        public int MultiVarRequestMaxItems { get; set; } = 16;
+
+        public void Dispose()
         {
-            s7Connector = new Sharp7Connector(plcConnectionSettings, varaibleNameParser) { Logger = Logger };
-            ConnectionState = s7Connector.ConnectionState;
-
-            await s7Connector.InitializeAsync();
-
-#pragma warning disable 4014
-            Task.Run(async () =>
-            {
-                try
-                {
-                    await s7Connector.Connect();
-                }
-                catch (Exception e)
-                {
-                    Logger?.LogError(e, "Error while connecting to PLC");
-                }
-            });
-#pragma warning restore 4014
-
-            RunNotifications(s7Connector, MultiVarRequestCycleTime)
-                .AddDisposableTo(Disposables);
-
-            return true;
-        }
-
-        public Task<TValue> GetValue<TValue>(string variableName)
-        {
-            return GetValue<TValue>(variableName, CancellationToken.None);
-        }
-
-
-
-        public async Task<TValue> GetValue<TValue>(string variableName, CancellationToken token)
-        {
-            var address = varaibleNameParser.Parse(variableName);
-            if (address == null) throw new ArgumentException("Input variable name is not valid", nameof(variableName));
-
-            var data = await s7Connector.ReadBytes(address.Operand, address.Start, address.Length, address.DbNr, token);
-            return S7ValueConverter.ConvertToType<TValue>(data, address);
-        }
-
-
-        public Task SetValue<TValue>(string variableName, TValue value)
-        {
-            return SetValue(variableName, value, CancellationToken.None);
-        }
-
-        public async Task SetValue<TValue>(string variableName, TValue value, CancellationToken token)
-        {
-            var address = varaibleNameParser.Parse(variableName);
-            if (address == null) throw new ArgumentException("Input variable name is not valid", "variableName");
-
-            if (typeof(TValue) == typeof(bool))
-            {
-                await s7Connector.WriteBit(address.Operand, address.Start, address.Bit, (bool)(object)value, address.DbNr, token);
-            }
-            else if (typeof(TValue) == typeof(int) || typeof(TValue) == typeof(short))
-            {
-                byte[] bytes;
-                if (address.Length == 4)
-                    bytes = BitConverter.GetBytes((int)(object)value);
-                else
-                    bytes = BitConverter.GetBytes((short)(object)value);
-
-                Array.Reverse(bytes);
-
-                await s7Connector.WriteBytes(address.Operand, address.Start, bytes, address.DbNr, token);
-            }
-            else if (typeof(TValue) == typeof(byte) || typeof(TValue) == typeof(char))
-            {
-                var bytes = new[] { Convert.ToByte(value) };
-                await s7Connector.WriteBytes(address.Operand, address.Start, bytes, address.DbNr, token);
-            }
-            else if (typeof(TValue) == typeof(byte[]))
-            {
-                await s7Connector.WriteBytes(address.Operand, address.Start, (byte[])(object)value, address.DbNr, token);
-            }
-            else if (typeof(TValue) == typeof(float))
-            {
-                var buffer = new byte[sizeof(float)];
-                S7.SetRealAt(buffer, 0, (float)(object)value);
-                await s7Connector.WriteBytes(address.Operand, address.Start, buffer, address.DbNr, token);
-            }
-            else if (typeof(TValue) == typeof(string))
-            {
-                var stringValue = value as string;
-                if (stringValue == null) throw new ArgumentException("Value must be of type string", "value");
-
-                var bytes = Encoding.ASCII.GetBytes(stringValue);
-                Array.Resize(ref bytes, address.Length);
-
-                if (address.Type == DbType.String)
-                {
-                    var bytesWritten = await s7Connector.WriteBytes(address.Operand, address.Start, new[] { (byte)address.Length, (byte)bytes.Length }, address.DbNr, token);
-                    token.ThrowIfCancellationRequested();
-                    if (bytesWritten == 2)
-                    {
-                        var stringStartAddress = (ushort)(address.Start + 2);
-                        token.ThrowIfCancellationRequested();
-                        await s7Connector.WriteBytes(address.Operand, stringStartAddress, bytes, address.DbNr, token);
-                    }
-                }
-                else
-                {
-                    await s7Connector.WriteBytes(address.Operand, address.Start, bytes, address.DbNr, token);
-                    token.ThrowIfCancellationRequested();
-                }
-            }
-            else
-            {
-                throw new InvalidOperationException($"type '{typeof(TValue)}' not supported.");
-            }
+            Dispose(true);
+            GC.SuppressFinalize(this);
         }
 
         public IObservable<TValue> CreateNotification<TValue>(string variableName, TransmissionMode transmissionMode)
@@ -197,10 +90,119 @@ namespace Sharp7.Rx
             });
         }
 
-        public void Dispose()
+        public Task<TValue> GetValue<TValue>(string variableName)
         {
-            Dispose(true);
-            GC.SuppressFinalize(this);
+            return GetValue<TValue>(variableName, CancellationToken.None);
+        }
+
+
+        public Task SetValue<TValue>(string variableName, TValue value)
+        {
+            return SetValue(variableName, value, CancellationToken.None);
+        }
+
+
+        public async Task<TValue> GetValue<TValue>(string variableName, CancellationToken token)
+        {
+            var address = varaibleNameParser.Parse(variableName);
+            if (address == null) throw new ArgumentException("Input variable name is not valid", nameof(variableName));
+
+            var data = await s7Connector.ReadBytes(address.Operand, address.Start, address.Length, address.DbNr, token);
+            return S7ValueConverter.ConvertToType<TValue>(data, address);
+        }
+
+        public async Task<bool> InitializeAsync()
+        {
+            s7Connector = new Sharp7Connector(plcConnectionSettings, varaibleNameParser) {Logger = Logger};
+            ConnectionState = s7Connector.ConnectionState;
+
+            await s7Connector.InitializeAsync();
+
+#pragma warning disable 4014
+            Task.Run(async () =>
+            {
+                try
+                {
+                    await s7Connector.Connect();
+                }
+                catch (Exception e)
+                {
+                    Logger?.LogError(e, "Error while connecting to PLC");
+                }
+            });
+#pragma warning restore 4014
+
+            RunNotifications(s7Connector, MultiVarRequestCycleTime)
+                .AddDisposableTo(Disposables);
+
+            return true;
+        }
+
+        public async Task SetValue<TValue>(string variableName, TValue value, CancellationToken token)
+        {
+            var address = varaibleNameParser.Parse(variableName);
+            if (address == null) throw new ArgumentException("Input variable name is not valid", "variableName");
+
+            if (typeof(TValue) == typeof(bool))
+            {
+                await s7Connector.WriteBit(address.Operand, address.Start, address.Bit, (bool) (object) value, address.DbNr, token);
+            }
+            else if (typeof(TValue) == typeof(int) || typeof(TValue) == typeof(short))
+            {
+                byte[] bytes;
+                if (address.Length == 4)
+                    bytes = BitConverter.GetBytes((int) (object) value);
+                else
+                    bytes = BitConverter.GetBytes((short) (object) value);
+
+                Array.Reverse(bytes);
+
+                await s7Connector.WriteBytes(address.Operand, address.Start, bytes, address.DbNr, token);
+            }
+            else if (typeof(TValue) == typeof(byte) || typeof(TValue) == typeof(char))
+            {
+                var bytes = new[] {Convert.ToByte(value)};
+                await s7Connector.WriteBytes(address.Operand, address.Start, bytes, address.DbNr, token);
+            }
+            else if (typeof(TValue) == typeof(byte[]))
+            {
+                await s7Connector.WriteBytes(address.Operand, address.Start, (byte[]) (object) value, address.DbNr, token);
+            }
+            else if (typeof(TValue) == typeof(float))
+            {
+                var buffer = new byte[sizeof(float)];
+                buffer.SetRealAt(0, (float) (object) value);
+                await s7Connector.WriteBytes(address.Operand, address.Start, buffer, address.DbNr, token);
+            }
+            else if (typeof(TValue) == typeof(string))
+            {
+                var stringValue = value as string;
+                if (stringValue == null) throw new ArgumentException("Value must be of type string", "value");
+
+                var bytes = Encoding.ASCII.GetBytes(stringValue);
+                Array.Resize(ref bytes, address.Length);
+
+                if (address.Type == DbType.String)
+                {
+                    var bytesWritten = await s7Connector.WriteBytes(address.Operand, address.Start, new[] {(byte) address.Length, (byte) bytes.Length}, address.DbNr, token);
+                    token.ThrowIfCancellationRequested();
+                    if (bytesWritten == 2)
+                    {
+                        var stringStartAddress = (ushort) (address.Start + 2);
+                        token.ThrowIfCancellationRequested();
+                        await s7Connector.WriteBytes(address.Operand, stringStartAddress, bytes, address.DbNr, token);
+                    }
+                }
+                else
+                {
+                    await s7Connector.WriteBytes(address.Operand, address.Start, bytes, address.DbNr, token);
+                    token.ThrowIfCancellationRequested();
+                }
+            }
+            else
+            {
+                throw new InvalidOperationException($"type '{typeof(TValue)}' not supported.");
+            }
         }
 
         protected virtual void Dispose(bool disposing)
@@ -221,21 +223,6 @@ namespace Sharp7.Rx
 
                 multiVariableSubscriptions.Dispose();
             }
-        }
-
-        ~Sharp7Plc()
-        {
-            Dispose(false);
-        }
-
-        private IDisposable RunNotifications(IS7Connector connector, TimeSpan cycle)
-        {
-            return ConnectionState.FirstAsync()
-                .Select(states => states == Enums.ConnectionState.Connected)
-                .SelectMany(connected => GetAllValues(connected, connector))
-                .RepeatAfterDelay(MultiVarRequestCycleTime)
-                .LogAndRetryAfterDelay(Logger, cycle, "Error while getting batch notifications from plc")
-                .Subscribe();
         }
 
         private async Task<Unit> GetAllValues(bool connected, IS7Connector connector)
@@ -272,13 +259,26 @@ namespace Sharp7.Rx
                 var min = performanceCoutner.Min();
                 var max = performanceCoutner.Max();
 
-                Logger?.LogTrace("Performance statistic during {0} elements of plc notification. Min: {1}, Max: {2}, Average: {3}, Plc: '{4}', Number of variables: {5}, Batch size: {6}", performanceCoutner.Capacity, min, max, average, plcConnectionSettings.IpAddress, multiVariableSubscriptions.ExistingKeys.Count(),
-                            MultiVarRequestMaxItems);
+                Logger?.LogTrace("Performance statistic during {0} elements of plc notification. Min: {1}, Max: {2}, Average: {3}, Plc: '{4}', Number of variables: {5}, Batch size: {6}", performanceCoutner.Capacity, min, max, average, plcConnectionSettings.IpAddress,
+                                 multiVariableSubscriptions.ExistingKeys.Count(),
+                                 MultiVarRequestMaxItems);
                 performanceCoutner.Clear();
             }
         }
 
-        public int MultiVarRequestMaxItems { get; set; } = 16;
-        public TimeSpan MultiVarRequestCycleTime { get; private set; } = TimeSpan.FromSeconds(0.1);
+        private IDisposable RunNotifications(IS7Connector connector, TimeSpan cycle)
+        {
+            return ConnectionState.FirstAsync()
+                .Select(states => states == Enums.ConnectionState.Connected)
+                .SelectMany(connected => GetAllValues(connected, connector))
+                .RepeatAfterDelay(MultiVarRequestCycleTime)
+                .LogAndRetryAfterDelay(Logger, cycle, "Error while getting batch notifications from plc")
+                .Subscribe();
+        }
+
+        ~Sharp7Plc()
+        {
+            Dispose(false);
+        }
     }
 }
