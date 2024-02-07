@@ -85,8 +85,14 @@ public class Sharp7Plc : IPlc
             var disposeableContainer = multiVariableSubscriptions.GetOrCreateObservable(variableName);
             disposeableContainer.AddDisposableTo(disposables);
 
-            var observable = disposeableContainer.Observable
-                .Select(bytes => S7ValueConverter.ConvertToType<TValue>(bytes, address));
+            var observable =
+                // Directly read variable first.
+                // This will propagate any errors due to reading from invalid addresses.
+                Observable.FromAsync(() => GetValue<TValue>(variableName))
+                    .Concat(
+                        disposeableContainer.Observable
+                            .Select(bytes => S7ValueConverter.ConvertToType<TValue>(bytes, address))
+                    );
 
             if (transmissionMode == TransmissionMode.OnChange)
                 observable = observable.DistinctUntilChanged();
