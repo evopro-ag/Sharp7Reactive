@@ -24,14 +24,34 @@ namespace Sharp7.Rx
         private IS7Connector s7Connector;
         private readonly PlcConnectionSettings plcConnectionSettings;
         private readonly ConcurrentSubjectDictionary<string, byte[]> multiVariableSubscriptions = new ConcurrentSubjectDictionary<string, byte[]>(StringComparer.InvariantCultureIgnoreCase);
-        protected readonly CompositeDisposable Disposables = new CompositeDisposable();        
+        protected readonly CompositeDisposable Disposables = new CompositeDisposable();
         private readonly List<long> performanceCoutner = new List<long>(1000);
 
 
-
-        public Sharp7Plc(string ipAddress, int rackNumber, int cpuMpiAddress, int port = 102)
+        /// <summary>
+        /// </summary>
+        /// <param name="ipAddress"></param>
+        /// <param name="rackNumber"></param>
+        /// <param name="cpuMpiAddress"></param>
+        /// <param name="port"></param>
+        /// <param name="multiVarRequestCycleTime">
+        ///     <para>
+        ///         Polling interval used to read multi variable requests from PLC.
+        ///     </para>
+        ///     <para>
+        ///         This is the wait time between two successive reads from PLC and determines the
+        ///         time resolution for all variable reads reated with CreateNotification.
+        ///     </para>
+        ///     <para>
+        ///         Default is 100 ms. The minimum supported time is 5 ms.
+        ///     </para>
+        /// </param>
+        public Sharp7Plc(string ipAddress, int rackNumber, int cpuMpiAddress, int port = 102, TimeSpan? multiVarRequestCycleTime = null)
         {
-            plcConnectionSettings = new PlcConnectionSettings(){IpAddress = ipAddress, RackNumber = rackNumber, CpuMpiAddress = cpuMpiAddress, Port = port};
+            plcConnectionSettings = new PlcConnectionSettings() { IpAddress = ipAddress, RackNumber = rackNumber, CpuMpiAddress = cpuMpiAddress, Port = port };
+
+            if (multiVarRequestCycleTime != null && multiVarRequestCycleTime > TimeSpan.FromMilliseconds(5))
+                MultiVarRequestCycleTime = multiVarRequestCycleTime.Value;
         }
 
         public IObservable<ConnectionState> ConnectionState { get; private set; }
@@ -39,11 +59,11 @@ namespace Sharp7.Rx
 
         public async Task<bool> InitializeAsync()
         {
-            s7Connector = new Sharp7Connector(plcConnectionSettings, varaibleNameParser){Logger = Logger};
+            s7Connector = new Sharp7Connector(plcConnectionSettings, varaibleNameParser) { Logger = Logger };
             ConnectionState = s7Connector.ConnectionState;
 
             await s7Connector.InitializeAsync();
-            
+
 #pragma warning disable 4014
             Task.Run(async () =>
             {
@@ -58,9 +78,9 @@ namespace Sharp7.Rx
             });
 #pragma warning restore 4014
 
-            RunNotifications(s7Connector, TimeSpan.FromMilliseconds(100))
+            RunNotifications(s7Connector, MultiVarRequestCycleTime)
                 .AddDisposableTo(Disposables);
-            
+
             return true;
         }
 
@@ -70,7 +90,7 @@ namespace Sharp7.Rx
         }
 
 
-        
+
         public async Task<TValue> GetValue<TValue>(string variableName, CancellationToken token)
         {
             var address = varaibleNameParser.Parse(variableName);
@@ -176,7 +196,7 @@ namespace Sharp7.Rx
                 return disposables;
             });
         }
-        
+
         public void Dispose()
         {
             Dispose(true);
@@ -191,7 +211,7 @@ namespace Sharp7.Rx
             if (disposing)
             {
                 Disposables.Dispose();
-                    
+
                 if (s7Connector != null)
                 {
                     s7Connector.Disconnect().Wait();
@@ -207,22 +227,22 @@ namespace Sharp7.Rx
         {
             Dispose(false);
         }
-        
+
         private IDisposable RunNotifications(IS7Connector connector, TimeSpan cycle)
         {
             return ConnectionState.FirstAsync()
                 .Select(states => states == Enums.ConnectionState.Connected)
                 .SelectMany(connected => GetAllValues(connected, connector))
-                .RepeatAfterDelay(cycle)
+                .RepeatAfterDelay(MultiVarRequestCycleTime)
                 .LogAndRetryAfterDelay(Logger, cycle, "Error while getting batch notifications from plc")
                 .Subscribe();
         }
-        
+
         private async Task<Unit> GetAllValues(bool connected, IS7Connector connector)
         {
             if (!connected)
                 return Unit.Default;
-            
+
             if (multiVariableSubscriptions.ExistingKeys.IsEmpty())
                 return Unit.Default;
 
@@ -230,9 +250,9 @@ namespace Sharp7.Rx
             foreach (var partsOfMultiVarRequest in multiVariableSubscriptions.ExistingKeys.Buffer(MultiVarRequestMaxItems))
             {
                 var multiVarRequest = await connector.ExecuteMultiVarRequest(partsOfMultiVarRequest as IReadOnlyList<string>);
-                
+
                 foreach (var pair in multiVarRequest)
-                    if (multiVariableSubscriptions.TryGetObserver(pair.Key, out var subject)) 
+                    if (multiVariableSubscriptions.TryGetObserver(pair.Key, out var subject))
                         subject.OnNext(pair.Value);
             }
 
@@ -243,7 +263,7 @@ namespace Sharp7.Rx
 
             return Unit.Default;
         }
-        
+
         private void PrintAndResetPerformanceStatistik()
         {
             if (performanceCoutner.Count == performanceCoutner.Capacity)
@@ -259,5 +279,6 @@ namespace Sharp7.Rx
         }
 
         public int MultiVarRequestMaxItems { get; set; } = 16;
+        public TimeSpan MultiVarRequestCycleTime { get; private set; } = TimeSpan.FromSeconds(0.1);
     }
 }
