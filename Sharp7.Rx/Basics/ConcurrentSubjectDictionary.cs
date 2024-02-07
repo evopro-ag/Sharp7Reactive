@@ -85,7 +85,8 @@ namespace Sharp7.Rx.Basics
                 return;
             if (disposing && dictionary != null)
             {
-                dictionary.Values.DisposeItems();
+                foreach (var subjectWithRefCounter in dictionary) 
+                    subjectWithRefCounter.Value.Subject.OnCompleted();
                 dictionary.Clear();
                 dictionary = null;
             }

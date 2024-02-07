@@ -5,7 +5,6 @@ using System.Linq;
 using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
-using System.Reactive.Subjects;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -22,7 +21,6 @@ namespace Sharp7.Rx
     {
         private readonly IS7VariableNameParser varaibleNameParser = new CacheVariableNameParser(new S7VariableNameParser());
         private bool disposed;
-        private ISubject<Unit> disposingSubject = new Subject<Unit>();
         private IS7Connector s7Connector;
         private readonly PlcConnectionSettings plcConnectionSettings;
         private readonly ConcurrentSubjectDictionary<string, byte[]> multiVariableSubscriptions = new ConcurrentSubjectDictionary<string, byte[]>(StringComparer.InvariantCultureIgnoreCase);
@@ -182,33 +180,26 @@ namespace Sharp7.Rx
         public void Dispose()
         {
             Dispose(true);
+            GC.SuppressFinalize(this);
         }
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!disposed)
+            if (disposed) return;
+            disposed = true;
+
+            if (disposing)
             {
-                if (disposing)
-                {
-                    Disposables.Dispose();
+                Disposables.Dispose();
                     
-                    if (disposingSubject != null)
-                    {
-                        disposingSubject.OnNext(Unit.Default);
-                        disposingSubject.OnCompleted();
-                        var disposable = (disposingSubject as IDisposable);
-                        if (disposable != null) disposable.Dispose();
-                        disposingSubject = null;
-                    }
-                    if (s7Connector != null)
-                    {
-                        s7Connector.Disconnect().Wait();
-                        s7Connector.Dispose();
-                        s7Connector = null;
-                    }
+                if (s7Connector != null)
+                {
+                    s7Connector.Disconnect().Wait();
+                    s7Connector.Dispose();
+                    s7Connector = null;
                 }
 
-                disposed = true;
+                multiVariableSubscriptions.Dispose();
             }
         }
 
@@ -224,7 +215,6 @@ namespace Sharp7.Rx
                 .SelectMany(connected => GetAllValues(connected, connector))
                 .RepeatAfterDelay(cycle)
                 .LogAndRetryAfterDelay(Logger, cycle, "Error while getting batch notifications from plc")
-                .TakeUntil(disposingSubject)
                 .Subscribe();
         }
         
@@ -239,15 +229,11 @@ namespace Sharp7.Rx
             var stopWatch = Stopwatch.StartNew();
             foreach (var partsOfMultiVarRequest in multiVariableSubscriptions.ExistingKeys.Buffer(MultiVarRequestMaxItems))
             {
-                var multiVarRequest = await connector.ExecuteMultiVarRequest(partsOfMultiVarRequest as IReadOnlyList<string>??partsOfMultiVarRequest.ToList());
-
+                var multiVarRequest = await connector.ExecuteMultiVarRequest(partsOfMultiVarRequest as IReadOnlyList<string>);
+                
                 foreach (var pair in multiVarRequest)
-                {
-                    if (multiVariableSubscriptions.TryGetObserver(pair.Key, out var subject))
-                    {
+                    if (multiVariableSubscriptions.TryGetObserver(pair.Key, out var subject)) 
                         subject.OnNext(pair.Value);
-                    }
-                }
             }
 
             stopWatch.Stop();
