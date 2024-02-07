@@ -81,9 +81,9 @@ public class Sharp7Plc : IPlc
             var address = varaibleNameParser.Parse(variableName);
             if (address == null) throw new ArgumentException("Input variable name is not valid", nameof(variableName));
 
-            var disposables = new CompositeDisposable();
+            var disp = new CompositeDisposable();
             var disposeableContainer = multiVariableSubscriptions.GetOrCreateObservable(variableName);
-            disposeableContainer.AddDisposableTo(disposables);
+            disposeableContainer.AddDisposableTo(disp);
 
             var observable =
                 // Directly read variable first.
@@ -98,9 +98,9 @@ public class Sharp7Plc : IPlc
                 observable = observable.DistinctUntilChanged();
 
             observable.Subscribe(observer)
-                .AddDisposableTo(disposables);
+                .AddDisposableTo(disp);
 
-            return disposables;
+            return disp;
         });
     }
 
