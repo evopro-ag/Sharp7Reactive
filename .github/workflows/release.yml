@@ -1,4 +1,4 @@
-name: .NET Core Build
+name: Release
 
 on:
   push:
@@ -28,6 +28,7 @@ jobs:
       run: ./NUnit.ConsoleRunner.3.13.0/tools/nunit3-console.exe  "Sharp7.Rx.Tests\bin\Release\net461\Sharp7.Rx.Tests.dll"
     - name: NugetPublish
       run: dotnet nuget push Sharp7.Rx\bin\Release\Sharp7.Rx.1.1.${{ github.run_number }}.nupkg -s https://api.nuget.org/v3/index.json -k ${{ secrets.NUGET_DEPLOY_KEY }}
+      if: github.event_name != 'pull_request'
     - name: Create Release
       id: create_release
       uses: actions/create-release@v1
@@ -38,3 +39,4 @@ jobs:
         release_name: 1.1.${{ github.run_number }}
         draft: false
         prerelease: true
+      if: github.event_name != 'pull_request'
