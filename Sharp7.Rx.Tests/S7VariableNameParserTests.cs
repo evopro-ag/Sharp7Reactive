@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using DeepEqual.Syntax;
+﻿using DeepEqual.Syntax;
 using NUnit.Framework;
 using Sharp7.Rx.Enums;
 

@@ -1,10 +1,9 @@
-﻿namespace Sharp7.Rx.Enums
+﻿namespace Sharp7.Rx.Enums;
+
+internal enum CpuType
 {
-    internal enum CpuType
-    {
-        S7_300,
-        S7_400,
-        S7_1200,
-        S7_1500
-    }
+    S7_300,
+    S7_400,
+    S7_1200,
+    S7_1500
 }

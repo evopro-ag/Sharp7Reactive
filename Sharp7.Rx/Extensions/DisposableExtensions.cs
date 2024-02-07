@@ -1,13 +1,11 @@
-﻿using System;
-using System.Reactive.Disposables;
+﻿using System.Reactive.Disposables;
 
-namespace Sharp7.Rx.Extensions
+namespace Sharp7.Rx.Extensions;
+
+internal static class DisposableExtensions
 {
-    internal static class DisposableExtensions
+    public static void AddDisposableTo(this IDisposable disposable, CompositeDisposable compositeDisposable)
     {
-        public static void AddDisposableTo(this IDisposable disposable, CompositeDisposable compositeDisposable)
-        {
-            compositeDisposable.Add(disposable);
-        }
+        compositeDisposable.Add(disposable);
     }
 }

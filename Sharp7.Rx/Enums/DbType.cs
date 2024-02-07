@@ -1,13 +1,12 @@
-﻿namespace Sharp7.Rx.Enums
+﻿namespace Sharp7.Rx.Enums;
+
+internal enum DbType
 {
-    internal enum DbType
-    {
-        Bit,
-        String,
-        Byte,
-        Double,
-        Integer,
-        DInteger,
-        ULong
-    }
+    Bit,
+    String,
+    Byte,
+    Double,
+    Integer,
+    DInteger,
+    ULong
 }

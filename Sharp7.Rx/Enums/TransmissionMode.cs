@@ -1,8 +1,7 @@
-﻿namespace Sharp7.Rx.Enums
+﻿namespace Sharp7.Rx.Enums;
+
+public enum TransmissionMode
 {
-    public enum TransmissionMode
-    {
-        Cyclic = 3,
-        OnChange = 4,
-    }
+    Cyclic = 3,
+    OnChange = 4,
 }
