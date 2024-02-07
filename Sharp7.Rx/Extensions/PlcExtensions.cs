@@ -18,7 +18,7 @@ namespace Sharp7.Rx.Extensions
                 var subscriptions = new CompositeDisposable();
 
                 var notification = plc
-                    .CreateNotification<bool>(triggerAddress, TransmissionMode.OnChange, TimeSpan.Zero)
+                    .CreateNotification<bool>(triggerAddress, TransmissionMode.OnChange)
                     .Publish()
                     .RefCount();
 

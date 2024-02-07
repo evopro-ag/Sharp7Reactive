@@ -153,7 +153,7 @@ namespace Sharp7.Rx
             }
         }
 
-        public IObservable<TValue> CreateNotification<TValue>(string variableName, TransmissionMode transmissionMode, TimeSpan cycleTime)
+        public IObservable<TValue> CreateNotification<TValue>(string variableName, TransmissionMode transmissionMode)
         {
             return Observable.Create<TValue>(observer =>
             {

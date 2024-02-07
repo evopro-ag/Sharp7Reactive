@@ -7,7 +7,7 @@ namespace Sharp7.Rx.Interfaces
 {
     public interface IPlc : IDisposable
     {
-        IObservable<TValue> CreateNotification<TValue>(string variableName, TransmissionMode transmissionMode, TimeSpan cycleSpan);
+        IObservable<TValue> CreateNotification<TValue>(string variableName, TransmissionMode transmissionMode);
         Task SetValue<TValue>(string variableName, TValue value);
         Task<TValue> GetValue<TValue>(string variableName);
 		IObservable<ConnectionState> ConnectionState { get; }
