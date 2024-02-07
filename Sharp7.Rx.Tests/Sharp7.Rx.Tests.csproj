@@ -1,18 +1,22 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-	<PropertyGroup>
-		<TargetFramework>net8.0</TargetFramework>
-	</PropertyGroup>
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>12.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AnalysisLevel>latest-Recommended</AnalysisLevel>
+  </PropertyGroup>
 
-	<ItemGroup>
-		<PackageReference Include="DeepEqual" Version="4.2.1" />
-		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
-		<PackageReference Include="NUnit" Version="4.0.1" />
-		<PackageReference Include="Shouldly" Version="4.2.1" />
-	</ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="DeepEqual" Version="4.2.1" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+    <PackageReference Include="NUnit" Version="4.0.1" />
+    <PackageReference Include="Shouldly" Version="4.2.1" />
+  </ItemGroup>
 
-	<ItemGroup>
-		<ProjectReference Include="..\Sharp7.Rx\Sharp7.Rx.csproj" />
-	</ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Sharp7.Rx\Sharp7.Rx.csproj" />
+  </ItemGroup>
 
 </Project>
