@@ -146,10 +146,9 @@ namespace Sharp7.Rx
 
             var buffer = new byte[bytesToRead];
 
-            var area = FromOperand(operand);
 
             var result =
-                await Task.Factory.StartNew(() => sharp7.ReadArea(area, dBNr, startByteAddress, bytesToRead, S7Consts.S7WLByte, buffer), token, TaskCreationOptions.None, scheduler);
+                await Task.Factory.StartNew(() => sharp7.ReadArea(operand.ToArea(), dBNr, startByteAddress, bytesToRead, S7WordLength.Byte, buffer), token, TaskCreationOptions.None, scheduler);
             token.ThrowIfCancellationRequested();
 
             if (result != 0)
@@ -170,7 +169,7 @@ namespace Sharp7.Rx
 
             var offsetStart = (startByteAddress * 8) + bitAdress;
 
-            var result = await Task.Factory.StartNew(() => sharp7.WriteArea(FromOperand(operand), dbNr, offsetStart, 1, S7Consts.S7WLBit, buffer), token, TaskCreationOptions.None, scheduler);
+            var result = await Task.Factory.StartNew(() => sharp7.WriteArea(operand.ToArea(), dbNr, offsetStart, 1, S7WordLength.Bit, buffer), token, TaskCreationOptions.None, scheduler);
             token.ThrowIfCancellationRequested();
 
             if (result != 0)
@@ -186,7 +185,7 @@ namespace Sharp7.Rx
         {
             EnsureConnectionValid();
 
-            var result = await Task.Factory.StartNew(() => sharp7.WriteArea(FromOperand(operand), dBNr, startByteAdress, data.Length, S7Consts.S7WLByte, data), token, TaskCreationOptions.None, scheduler);
+            var result = await Task.Factory.StartNew(() => sharp7.WriteArea(operand.ToArea(), dBNr, startByteAdress, data.Length, S7WordLength.Byte, data), token, TaskCreationOptions.None, scheduler);
             token.ThrowIfCancellationRequested();
 
             if (result != 0)
@@ -256,23 +255,6 @@ namespace Sharp7.Rx
                 SetConnectionLostState();
 
             return false;
-        }
-
-        private int FromOperand(Operand operand)
-        {
-            switch (operand)
-            {
-                case Operand.Input:
-                    return S7Consts.S7AreaPE;
-                case Operand.Output:
-                    return S7Consts.S7AreaPA;
-                case Operand.Marker:
-                    return S7Consts.S7AreaMK;
-                case Operand.Db:
-                    return S7Consts.S7AreaDB;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(operand), operand, null);
-            }
         }
 
         private async Task<bool> Reconnect()
