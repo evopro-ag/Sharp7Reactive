@@ -154,9 +154,15 @@ public class Sharp7Plc : IPlc
         if (address == null) throw new ArgumentException("Input variable name is not valid", "variableName");
 
         if (typeof(TValue) == typeof(bool))
+        {
             // Special handling for bools, which are written on a by-bit basis. Writing a complete byte would
             // overwrite other bits within this byte.
-            await s7Connector.WriteBit(address.Operand, address.Start, address.Bit, (bool) (object) value, address.DbNr, token);
+
+            if (address.Bit == null)
+                throw new InvalidOperationException("Address must have a Bit to write a bool.");
+
+            await s7Connector.WriteBit(address.Operand, address.Start, address.Bit.Value, (bool) (object) value, address.DbNr, token);
+        }
         else
         {
             // TODO: Use ArrayPool.Rent() once we drop Framwework support

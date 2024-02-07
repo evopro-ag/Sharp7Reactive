@@ -10,8 +10,13 @@ internal class S7VariableAddress
     public ushort DbNr { get; set; }
     public ushort Start { get; set; }
     public ushort Length { get; set; }
-    public byte Bit { get; set; }
+    public byte? Bit { get; set; }
     public DbType Type { get; set; }
 
-    public ushort BufferLength => Type == DbType.String ? (ushort)(Length + 2) : Length;
+    public ushort BufferLength => Type switch
+    {
+        DbType.String => (ushort) (Length + 2),
+        DbType.WString => (ushort) (Length * 2 + 4),
+        _ => Length
+    };
 }
