@@ -2,7 +2,6 @@
 using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
-using System.Text;
 using Microsoft.Extensions.Logging;
 using Sharp7.Rx.Basics;
 using Sharp7.Rx.Enums;
@@ -155,64 +154,16 @@ public class Sharp7Plc : IPlc
         if (address == null) throw new ArgumentException("Input variable name is not valid", "variableName");
 
         if (typeof(TValue) == typeof(bool))
-        {
+            // Special handling for bools, which are written on a by-bit basis. Writing a complete byte would
+            // overwrite other bits within this byte.
             await s7Connector.WriteBit(address.Operand, address.Start, address.Bit, (bool) (object) value, address.DbNr, token);
-        }
-        else if (typeof(TValue) == typeof(int) || typeof(TValue) == typeof(short))
-        {
-            byte[] bytes;
-            if (address.Length == 4)
-                bytes = BitConverter.GetBytes((int) (object) value);
-            else
-                bytes = BitConverter.GetBytes((short) (object) value);
-
-            Array.Reverse(bytes);
-
-            await s7Connector.WriteBytes(address.Operand, address.Start, bytes, address.DbNr, token);
-        }
-        else if (typeof(TValue) == typeof(byte) || typeof(TValue) == typeof(char))
-        {
-            var bytes = new[] {Convert.ToByte(value)};
-            await s7Connector.WriteBytes(address.Operand, address.Start, bytes, address.DbNr, token);
-        }
-        else if (typeof(TValue) == typeof(byte[]))
-        {
-            await s7Connector.WriteBytes(address.Operand, address.Start, (byte[]) (object) value, address.DbNr, token);
-        }
-        else if (typeof(TValue) == typeof(float))
-        {
-            var buffer = new byte[sizeof(float)];
-            buffer.SetRealAt(0, (float) (object) value);
-            await s7Connector.WriteBytes(address.Operand, address.Start, buffer, address.DbNr, token);
-        }
-        else if (typeof(TValue) == typeof(string))
-        {
-            var stringValue = value as string;
-            if (stringValue == null) throw new ArgumentException("Value must be of type string", "value");
-
-            var bytes = Encoding.ASCII.GetBytes(stringValue);
-            Array.Resize(ref bytes, address.Length);
-
-            if (address.Type == DbType.String)
-            {
-                var bytesWritten = await s7Connector.WriteBytes(address.Operand, address.Start, new[] {(byte) address.Length, (byte) bytes.Length}, address.DbNr, token);
-                token.ThrowIfCancellationRequested();
-                if (bytesWritten == 2)
-                {
-                    var stringStartAddress = (ushort) (address.Start + 2);
-                    token.ThrowIfCancellationRequested();
-                    await s7Connector.WriteBytes(address.Operand, stringStartAddress, bytes, address.DbNr, token);
-                }
-            }
-            else
-            {
-                await s7Connector.WriteBytes(address.Operand, address.Start, bytes, address.DbNr, token);
-                token.ThrowIfCancellationRequested();
-            }
-        }
         else
         {
-            throw new InvalidOperationException($"type '{typeof(TValue)}' not supported.");
+            // TODO: Use ArrayPool.Rent() once we drop Framwework support
+            var bytes = new byte[address.BufferLength];
+            S7ValueConverter.WriteToBuffer(bytes, value, address);
+
+            await s7Connector.WriteBytes(address.Operand, address.Start, bytes, address.DbNr, token);
         }
     }
 
