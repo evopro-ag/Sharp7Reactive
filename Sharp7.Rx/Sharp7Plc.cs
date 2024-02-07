@@ -14,13 +14,13 @@ namespace Sharp7.Rx;
 
 public class Sharp7Plc : IPlc
 {
-    protected readonly CompositeDisposable Disposables = new CompositeDisposable();
-    private readonly ConcurrentSubjectDictionary<string, byte[]> multiVariableSubscriptions = new ConcurrentSubjectDictionary<string, byte[]>(StringComparer.InvariantCultureIgnoreCase);
-    private readonly List<long> performanceCoutner = new List<long>(1000);
+    private readonly CompositeDisposable disposables = new();
+    private readonly ConcurrentSubjectDictionary<string, byte[]> multiVariableSubscriptions = new(StringComparer.InvariantCultureIgnoreCase);
+    private readonly List<long> performanceCoutner = new(1000);
     private readonly PlcConnectionSettings plcConnectionSettings;
     private readonly IS7VariableNameParser varaibleNameParser = new CacheVariableNameParser(new S7VariableNameParser());
     private bool disposed;
-    private IS7Connector s7Connector;
+    private Sharp7Connector s7Connector;
 
 
     /// <summary>
@@ -44,13 +44,26 @@ public class Sharp7Plc : IPlc
     public Sharp7Plc(string ipAddress, int rackNumber, int cpuMpiAddress, int port = 102, TimeSpan? multiVarRequestCycleTime = null)
     {
         plcConnectionSettings = new PlcConnectionSettings {IpAddress = ipAddress, RackNumber = rackNumber, CpuMpiAddress = cpuMpiAddress, Port = port};
+        s7Connector = new Sharp7Connector(plcConnectionSettings, varaibleNameParser);
+        ConnectionState = s7Connector.ConnectionState;
 
-        if (multiVarRequestCycleTime != null && multiVarRequestCycleTime > TimeSpan.FromMilliseconds(5))
-            MultiVarRequestCycleTime = multiVarRequestCycleTime.Value;
+        if (multiVarRequestCycleTime != null)
+        {
+            if (multiVarRequestCycleTime < TimeSpan.FromMilliseconds(5))
+                MultiVarRequestCycleTime = TimeSpan.FromMilliseconds(5);
+            else
+                MultiVarRequestCycleTime = multiVarRequestCycleTime.Value;
+        }
     }
 
-    public IObservable<ConnectionState> ConnectionState { get; private set; }
-    public ILogger Logger { get; set; }
+    public IObservable<ConnectionState> ConnectionState { get; }
+
+    public ILogger Logger
+    {
+        get => s7Connector.Logger;
+        set => s7Connector.Logger = value;
+    }
+
     public TimeSpan MultiVarRequestCycleTime { get; } = TimeSpan.FromSeconds(0.1);
 
     public int MultiVarRequestMaxItems { get; set; } = 16;
@@ -108,9 +121,6 @@ public class Sharp7Plc : IPlc
 
     public async Task<bool> InitializeAsync()
     {
-        s7Connector = new Sharp7Connector(plcConnectionSettings, varaibleNameParser) {Logger = Logger};
-        ConnectionState = s7Connector.ConnectionState;
-
         await s7Connector.InitializeAsync();
 
 #pragma warning disable 4014
@@ -128,7 +138,7 @@ public class Sharp7Plc : IPlc
 #pragma warning restore 4014
 
         RunNotifications(s7Connector, MultiVarRequestCycleTime)
-            .AddDisposableTo(Disposables);
+            .AddDisposableTo(disposables);
 
         return true;
     }
@@ -207,7 +217,7 @@ public class Sharp7Plc : IPlc
 
         if (disposing)
         {
-            Disposables.Dispose();
+            disposables.Dispose();
 
             if (s7Connector != null)
             {
@@ -254,7 +264,8 @@ public class Sharp7Plc : IPlc
             var min = performanceCoutner.Min();
             var max = performanceCoutner.Max();
 
-            Logger?.LogTrace("Performance statistic during {0} elements of plc notification. Min: {1}, Max: {2}, Average: {3}, Plc: '{4}', Number of variables: {5}, Batch size: {6}", performanceCoutner.Capacity, min, max, average, plcConnectionSettings.IpAddress,
+            Logger?.LogTrace("Performance statistic during {0} elements of plc notification. Min: {1}, Max: {2}, Average: {3}, Plc: '{4}', Number of variables: {5}, Batch size: {6}",
+                             performanceCoutner.Capacity, min, max, average, plcConnectionSettings.IpAddress,
                              multiVariableSubscriptions.ExistingKeys.Count(),
                              MultiVarRequestMaxItems);
             performanceCoutner.Clear();

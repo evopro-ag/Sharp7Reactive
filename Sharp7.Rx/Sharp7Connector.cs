@@ -13,14 +13,14 @@ namespace Sharp7.Rx;
 
 internal class Sharp7Connector : IS7Connector
 {
-    private readonly BehaviorSubject<ConnectionState> connectionStateSubject = new BehaviorSubject<ConnectionState>(Enums.ConnectionState.Initial);
+    private readonly BehaviorSubject<ConnectionState> connectionStateSubject = new(Enums.ConnectionState.Initial);
     private readonly int cpuSlotNr;
 
-    private readonly CompositeDisposable disposables = new CompositeDisposable();
+    private readonly CompositeDisposable disposables = new();
     private readonly string ipAddress;
     private readonly int port;
     private readonly int rackNr;
-    private readonly LimitedConcurrencyLevelTaskScheduler scheduler = new LimitedConcurrencyLevelTaskScheduler(maxDegreeOfParallelism: 1);
+    private readonly LimitedConcurrencyLevelTaskScheduler scheduler = new(maxDegreeOfParallelism: 1);
     private readonly IS7VariableNameParser variableNameParser;
     private bool disposed;
 
