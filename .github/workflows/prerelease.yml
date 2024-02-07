@@ -25,6 +25,6 @@ jobs:
     - name: Build
       run: dotnet build --configuration Release --no-restore /p:version=2.0.${{ github.run_number }}-prerelease
     - name: Tests
-      run: ./NUnit.ConsoleRunner.3.17.0/tools/nunit3-console.exe  "Sharp7.Rx.Tests\bin\Release\net461\Sharp7.Rx.Tests.dll"
+      run: ./NUnit.ConsoleRunner.3.17.0/tools/nunit3-console.exe  "Sharp7.Rx.Tests\bin\Debug\net8.0\Sharp7.Rx.Tests.dll"
     - name: NugetPublish
       run: dotnet nuget push Sharp7.Rx\bin\Release\Sharp7.Rx.2.0.${{ github.run_number }}-prerelease.nupkg -s https://api.nuget.org/v3/index.json -k ${{ secrets.NUGET_DEPLOY_KEY }}
