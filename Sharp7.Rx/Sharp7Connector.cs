@@ -6,21 +6,20 @@ using Sharp7.Rx.Basics;
 using Sharp7.Rx.Enums;
 using Sharp7.Rx.Extensions;
 using Sharp7.Rx.Interfaces;
-using Sharp7.Rx.Resources;
 using Sharp7.Rx.Settings;
 
 namespace Sharp7.Rx;
 
 internal class Sharp7Connector : IS7Connector
 {
-    private readonly BehaviorSubject<ConnectionState> connectionStateSubject = new BehaviorSubject<ConnectionState>(Enums.ConnectionState.Initial);
+    private readonly BehaviorSubject<ConnectionState> connectionStateSubject = new(Enums.ConnectionState.Initial);
     private readonly int cpuSlotNr;
 
-    private readonly CompositeDisposable disposables = new CompositeDisposable();
+    private readonly CompositeDisposable disposables = new();
     private readonly string ipAddress;
     private readonly int port;
     private readonly int rackNr;
-    private readonly LimitedConcurrencyLevelTaskScheduler scheduler = new LimitedConcurrencyLevelTaskScheduler(maxDegreeOfParallelism: 1);
+    private readonly LimitedConcurrencyLevelTaskScheduler scheduler = new(maxDegreeOfParallelism: 1);
     private readonly IS7VariableNameParser variableNameParser;
     private bool disposed;
 
@@ -55,21 +54,26 @@ internal class Sharp7Connector : IS7Connector
     public async Task<bool> Connect()
     {
         if (sharp7 == null)
-            throw new InvalidOperationException(StringResources.StrErrorS7DriverNotInitialized);
+            throw new InvalidOperationException("S7 driver is not initialized.");
 
         try
         {
             var errorCode = await Task.Factory.StartNew(() => sharp7.ConnectTo(ipAddress, rackNr, cpuSlotNr), CancellationToken.None, TaskCreationOptions.None, scheduler);
-            var success = EvaluateErrorCode(errorCode);
-            if (success)
+            if (errorCode == 0)
             {
                 connectionStateSubject.OnNext(Enums.ConnectionState.Connected);
                 return true;
             }
+            else
+            {
+                var errorText = EvaluateErrorCode(errorCode);
+                Logger.LogError("Failed to establish initial connection: {Error}", errorText);
+            }
         }
         catch (Exception ex)
         {
-            // TODO:
+            connectionStateSubject.OnNext(Enums.ConnectionState.ConnectionLost);
+            Logger.LogError(ex, "Failed to establish initial connection.");
         }
 
         return false;
@@ -102,8 +106,8 @@ internal class Sharp7Connector : IS7Connector
         var result = await Task.Factory.StartNew(() => s7MultiVar.Read(), CancellationToken.None, TaskCreationOptions.None, scheduler);
         if (result != 0)
         {
-            EvaluateErrorCode(result);
-            throw new InvalidOperationException($"Error in MultiVar request for variables: {string.Join(",", variableNames)}");
+            var errorText = EvaluateErrorCode(result);
+            throw new S7CommunicationException($"Error in MultiVar request for variables: {string.Join(",", variableNames)} ({errorText})", result, errorText);
         }
 
         return buffers.ToDictionary(arg => arg.VariableName, arg => arg.Buffer);
@@ -129,13 +133,13 @@ internal class Sharp7Connector : IS7Connector
         }
         catch (Exception ex)
         {
-            Logger?.LogError(ex, StringResources.StrErrorS7DriverCouldNotBeInitialized);
+            Logger?.LogError(ex, "S7 driver could not be initialized");
         }
 
         return Task.FromResult(true);
     }
 
-    public async Task<byte[]> ReadBytes(Operand operand, ushort startByteAddress, ushort bytesToRead, ushort dBNr, CancellationToken token)
+    public async Task<byte[]> ReadBytes(Operand operand, ushort startByteAddress, ushort bytesToRead, ushort dbNo, CancellationToken token)
     {
         EnsureConnectionValid();
 
@@ -143,20 +147,19 @@ internal class Sharp7Connector : IS7Connector
 
 
         var result =
-            await Task.Factory.StartNew(() => sharp7.ReadArea(operand.ToArea(), dBNr, startByteAddress, bytesToRead, S7WordLength.Byte, buffer), token, TaskCreationOptions.None, scheduler);
+            await Task.Factory.StartNew(() => sharp7.ReadArea(operand.ToArea(), dbNo, startByteAddress, bytesToRead, S7WordLength.Byte, buffer), token, TaskCreationOptions.None, scheduler);
         token.ThrowIfCancellationRequested();
 
         if (result != 0)
         {
-            EvaluateErrorCode(result);
-            var errorText = sharp7.ErrorText(result);
-            throw new InvalidOperationException($"Error reading {operand}{dBNr}:{startByteAddress}->{bytesToRead} ({errorText})");
+            var errorText = EvaluateErrorCode(result);
+            throw new S7CommunicationException($"Error reading {operand}{dbNo}:{startByteAddress}->{bytesToRead} ({errorText})", result, errorText);
         }
 
         return buffer;
     }
 
-    public async Task<bool> WriteBit(Operand operand, ushort startByteAddress, byte bitAdress, bool value, ushort dbNr, CancellationToken token)
+    public async Task WriteBit(Operand operand, ushort startByteAddress, byte bitAdress, bool value, ushort dbNo, CancellationToken token)
     {
         EnsureConnectionValid();
 
@@ -164,32 +167,28 @@ internal class Sharp7Connector : IS7Connector
 
         var offsetStart = (startByteAddress * 8) + bitAdress;
 
-        var result = await Task.Factory.StartNew(() => sharp7.WriteArea(operand.ToArea(), dbNr, offsetStart, 1, S7WordLength.Bit, buffer), token, TaskCreationOptions.None, scheduler);
+        var result = await Task.Factory.StartNew(() => sharp7.WriteArea(operand.ToArea(), dbNo, offsetStart, 1, S7WordLength.Bit, buffer), token, TaskCreationOptions.None, scheduler);
         token.ThrowIfCancellationRequested();
 
         if (result != 0)
         {
-            EvaluateErrorCode(result);
-            return (false);
+            var errorText = EvaluateErrorCode(result);
+            throw new S7CommunicationException($"Error writing {operand}{dbNo}:{startByteAddress} bit {bitAdress} ({errorText})", result, errorText);
         }
-
-        return (true);
     }
 
-    public async Task<ushort> WriteBytes(Operand operand, ushort startByteAdress, byte[] data, ushort dBNr, CancellationToken token)
+    public async Task WriteBytes(Operand operand, ushort startByteAddress, byte[] data, ushort dbNo, CancellationToken token)
     {
         EnsureConnectionValid();
 
-        var result = await Task.Factory.StartNew(() => sharp7.WriteArea(operand.ToArea(), dBNr, startByteAdress, data.Length, S7WordLength.Byte, data), token, TaskCreationOptions.None, scheduler);
+        var result = await Task.Factory.StartNew(() => sharp7.WriteArea(operand.ToArea(), dbNo, startByteAddress, data.Length, S7WordLength.Byte, data), token, TaskCreationOptions.None, scheduler);
         token.ThrowIfCancellationRequested();
 
         if (result != 0)
         {
-            EvaluateErrorCode(result);
-            return 0;
+            var errorText = EvaluateErrorCode(result);
+            throw new S7CommunicationException($"Error writing {operand}{dbNo}:{startByteAddress}.{data.Length} ({errorText})", result, errorText);
         }
-
-        return (ushort) (data.Length);
     }
 
 
@@ -218,7 +217,7 @@ internal class Sharp7Connector : IS7Connector
     private async Task CloseConnection()
     {
         if (sharp7 == null)
-            throw new InvalidOperationException(StringResources.StrErrorS7DriverNotInitialized);
+            throw new InvalidOperationException("S7 driver is not initialized.");
 
         await Task.Factory.StartNew(() => sharp7.Disconnect(), CancellationToken.None, TaskCreationOptions.None, scheduler);
     }
@@ -229,19 +228,19 @@ internal class Sharp7Connector : IS7Connector
             throw new ObjectDisposedException("S7Connector");
 
         if (sharp7 == null)
-            throw new InvalidOperationException(StringResources.StrErrorS7DriverNotInitialized);
+            throw new InvalidOperationException("S7 driver is not initialized.");
 
         if (!IsConnected)
             throw new InvalidOperationException("Plc is not connected");
     }
 
-    private bool EvaluateErrorCode(int errorCode)
+    private string EvaluateErrorCode(int errorCode)
     {
         if (errorCode == 0)
-            return true;
+            return null;
 
         if (sharp7 == null)
-            throw new InvalidOperationException(StringResources.StrErrorS7DriverNotInitialized);
+            throw new InvalidOperationException("S7 driver is not initialized.");
 
         var errorText = sharp7.ErrorText(errorCode);
         Logger?.LogError($"Error Code {errorCode} {errorText}");
@@ -249,7 +248,7 @@ internal class Sharp7Connector : IS7Connector
         if (S7ErrorCodes.AssumeConnectionLost(errorCode))
             SetConnectionLostState();
 
-        return false;
+        return errorText;
     }
 
     private async Task<bool> Reconnect()
