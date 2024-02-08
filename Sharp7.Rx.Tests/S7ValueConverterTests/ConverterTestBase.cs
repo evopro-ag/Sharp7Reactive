@@ -30,17 +30,17 @@ internal abstract class ConverterTestBase
         yield return new ConverterTestCase((short) 4660, "DB99.Int5", [0x12, 0x34]);
         yield return new ConverterTestCase((short) -3532, "DB99.Int5", [0xF2, 0x34]);
         yield return new ConverterTestCase((ushort) 4660, "DB99.UInt5", [0x12, 0x34]);
-        yield return new ConverterTestCase((ushort) 3532, "DB99.UInt5", [0xF2, 0x34]);
+        yield return new ConverterTestCase((ushort) 62004, "DB99.UInt5", [0xF2, 0x34]);
         yield return new ConverterTestCase(305419879, "DB99.DInt5", [0x12, 0x34, 0x56, 0x67]);
         yield return new ConverterTestCase(-231451033, "DB99.DInt5", [0xF2, 0x34, 0x56, 0x67]);
         yield return new ConverterTestCase(305419879u, "DB99.UDInt5", [0x12, 0x34, 0x56, 0x67]);
-        yield return new ConverterTestCase(231451033u, "DB99.UDInt5", [0xF2, 0x34, 0x56, 0x67]);
+        yield return new ConverterTestCase(4063516263u, "DB99.UDInt5", [0xF2, 0x34, 0x56, 0x67]);
         yield return new ConverterTestCase(1311768394163015151L, "DB99.LInt5", [0x12, 0x34, 0x56, 0x67, 0x89, 0xAB, 0xCD, 0xEF]);
         yield return new ConverterTestCase(-994074615050678801L, "DB99.LInt5", [0xF2, 0x34, 0x56, 0x67, 0x89, 0xAB, 0xCD, 0xEF]);
         yield return new ConverterTestCase(1311768394163015151uL, "DB99.ULInt5", [0x12, 0x34, 0x56, 0x67, 0x89, 0xAB, 0xCD, 0xEF]);
         yield return new ConverterTestCase(17452669458658872815uL, "DB99.ULInt5", [0xF2, 0x34, 0x56, 0x67, 0x89, 0xAB, 0xCD, 0xEF]);
         yield return new ConverterTestCase(0.25f, "DB99.Real5", [0x3E, 0x80, 0x00, 0x00]);
-        yield return new ConverterTestCase(0.25, "DB99.LReal5", [0x3E, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
+        yield return new ConverterTestCase(0.25, "DB99.LReal5", [0x3F, 0xD0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
 
         yield return new ConverterTestCase(new byte[] {0x12, 0x34, 0x56, 0x67}, "DB99.Byte5.4", [0x12, 0x34, 0x56, 0x67]);
 
@@ -57,7 +57,6 @@ internal abstract class ConverterTestBase
         yield return new ConverterTestCase((byte) 18, "DB99.DBB0", [0x12]);
         yield return new ConverterTestCase((short) 4660, "DB99.INT0", [0x12, 0x34]);
         yield return new ConverterTestCase((short) -3532, "DB99.INT0", [0xF2, 0x34]);
-        yield return new ConverterTestCase(-3532, "DB99.INT0", [0xF2, 0x34]);
         yield return new ConverterTestCase(305419879, "DB99.DINT0", [0x12, 0x34, 0x56, 0x67]);
         yield return new ConverterTestCase(-231451033, "DB99.DINT0", [0xF2, 0x34, 0x56, 0x67]);
         yield return new ConverterTestCase(1311768394163015151L, "DB99.dul0", [0x12, 0x34, 0x56, 0x67, 0x89, 0xAB, 0xCD, 0xEF]);
@@ -81,6 +80,6 @@ internal abstract class ConverterTestBase
     {
         public S7VariableAddress VariableAddress => Parser.Parse(Address);
 
-        public override string ToString() => $"{Address} {Value} ({Value.GetType().Name})";
+        public override string ToString() => $"{Value.GetType().Name}, {Address}: {Value}";
     }
 }

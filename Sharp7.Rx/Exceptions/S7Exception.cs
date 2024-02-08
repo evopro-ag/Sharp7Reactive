@@ -11,6 +11,44 @@ public abstract class S7Exception : Exception
     }
 }
 
+public class DataTypeMissmatchException : S7Exception
+{
+    internal DataTypeMissmatchException(string message, Type type, S7VariableAddress address) : base(message)
+    {
+        Type = type;
+        Address = address.ToString();
+    }
+
+    internal DataTypeMissmatchException(string message, Exception innerException, Type type, S7VariableAddress address) : base(message, innerException)
+    {
+        Type = type;
+        Address = address.ToString();
+    }
+
+    public string Address { get; }
+
+    public Type Type { get; }
+}
+
+public class UnsupportedS7TypeException : S7Exception
+{
+    internal UnsupportedS7TypeException(string message, Type type, S7VariableAddress address) : base(message)
+    {
+        Type = type;
+        Address = address.ToString();
+    }
+
+    internal UnsupportedS7TypeException(string message, Exception innerException, Type type, S7VariableAddress address) : base(message, innerException)
+    {
+        Type = type;
+        Address = address.ToString();
+    }
+
+    public string Address { get; }
+
+    public Type Type { get; }
+}
+
 public class InvalidS7AddressException : S7Exception
 {
     public InvalidS7AddressException(string message, string input) : base(message)
@@ -23,5 +61,5 @@ public class InvalidS7AddressException : S7Exception
         Input = input;
     }
 
-    public string Input { get; private set; }
+    public string Input { get; }
 }

@@ -19,4 +19,14 @@ internal class S7VariableAddress
         DbType.WString => (ushort) (Length * 2 + 4),
         _ => Length
     };
+
+    public override string ToString() =>
+        Type switch
+        {
+            DbType.Bit => $"{Operand}{DbNr}.{Type}{Start}.{Bit}",
+            DbType.String => $"{Operand}{DbNr}.{Type}{Start}.{Length}",
+            DbType.WString => $"{Operand}{DbNr}.{Type}{Start}.{Length}",
+            DbType.Byte => Length == 1 ? $"{Operand}{DbNr}.{Type}{Start}" : $"{Operand}{DbNr}.{Type}{Start}.{Length}",
+            _ => $"{Operand}{DbNr}.{Type}{Start}",
+        };
 }
