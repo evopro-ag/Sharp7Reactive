@@ -77,8 +77,7 @@ public class Sharp7Plc : IPlc
     {
         return Observable.Create<TValue>(observer =>
         {
-            var address = varaibleNameParser.Parse(variableName);
-            if (address == null) throw new ArgumentException("Input variable name is not valid", nameof(variableName));
+            var address = ParseAndVerify(variableName, typeof(TValue));
 
             var disp = new CompositeDisposable();
             var disposeableContainer = multiVariableSubscriptions.GetOrCreateObservable(variableName);
@@ -103,6 +102,15 @@ public class Sharp7Plc : IPlc
         });
     }
 
+    private S7VariableAddress ParseAndVerify(string variableName, Type type)
+    {
+        var address = varaibleNameParser.Parse(variableName);
+        if (!address.MatchesType(type))
+            throw new DataTypeMissmatchException($"Address \"{variableName}\" does not match type {type}.", type, address);
+
+        return address;
+    }
+
     public Task<TValue> GetValue<TValue>(string variableName)
     {
         return GetValue<TValue>(variableName, CancellationToken.None);
@@ -117,8 +125,7 @@ public class Sharp7Plc : IPlc
 
     public async Task<TValue> GetValue<TValue>(string variableName, CancellationToken token)
     {
-        var address = varaibleNameParser.Parse(variableName);
-        if (address == null) throw new ArgumentException("Input variable name is not valid", nameof(variableName));
+        var address = ParseAndVerify(variableName, typeof(TValue));
 
         var data = await s7Connector.ReadBytes(address.Operand, address.Start, address.Length, address.DbNr, token);
         return S7ValueConverter.ReadFromBuffer<TValue>(data, address);
@@ -150,8 +157,7 @@ public class Sharp7Plc : IPlc
 
     public async Task SetValue<TValue>(string variableName, TValue value, CancellationToken token)
     {
-        var address = varaibleNameParser.Parse(variableName);
-        if (address == null) throw new ArgumentException("Input variable name is not valid", "variableName");
+        var address = ParseAndVerify(variableName, typeof(TValue));
 
         if (typeof(TValue) == typeof(bool))
         {

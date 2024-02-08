@@ -1,4 +1,5 @@
-﻿using System.Globalization;
+﻿#nullable enable
+using System.Globalization;
 using System.Text.RegularExpressions;
 using Sharp7.Rx.Enums;
 using Sharp7.Rx.Interfaces;
@@ -7,8 +8,8 @@ namespace Sharp7.Rx;
 
 internal class S7VariableNameParser : IS7VariableNameParser
 {
-    private static readonly Regex regex = new Regex(@"^(?<operand>db)(?<dbNo>\d+)\.?(?<type>[a-z]+)(?<start>\d+)(\.(?<bitOrLength>\d+))?$",
-                                                    RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly Regex regex = new(@"^(?<operand>db)(?<dbNo>\d+)\.?(?<type>[a-z]+)(?<start>\d+)(\.(?<bitOrLength>\d+))?$",
+                                              RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly IReadOnlyDictionary<string, DbType> types = new Dictionary<string, DbType>(StringComparer.OrdinalIgnoreCase)
     {
