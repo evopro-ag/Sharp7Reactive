@@ -7,12 +7,105 @@ namespace Sharp7.Rx;
 
 internal static class S7ValueConverter
 {
-    private static readonly Dictionary<Type, Func<byte[], S7VariableAddress, object>> readFunctions = new()
+    private static readonly Dictionary<Type, WriteFunc> writeFunctions = new()
+    {
+        {
+            typeof(bool), (data, address, value) =>
+            {
+                var byteValue = (bool) value ? (byte) 1 : (byte) 0;
+                var shifted = (byte) (byteValue << address.Bit!);
+                data[0] = shifted;
+            }
+        },
+
+        {typeof(byte), (data, address, value) => data[0] = (byte) value},
+        {
+            typeof(byte[]), (data, address, value) =>
+            {
+                var source = (byte[]) value;
+
+                var length = Math.Min(Math.Min(source.Length, data.Length), address.Length);
+
+                source.AsSpan(0, length).CopyTo(data);
+            }
+        },
+
+        {typeof(short), (data, address, value) => BinaryPrimitives.WriteInt16BigEndian(data, (short) value)},
+        {typeof(ushort), (data, address, value) => BinaryPrimitives.WriteUInt16BigEndian(data, (ushort) value)},
+        {typeof(int), (data, address, value) => BinaryPrimitives.WriteInt32BigEndian(data, (int) value)},
+        {typeof(uint), (data, address, value) => BinaryPrimitives.WriteUInt32BigEndian(data, (uint) value)},
+        {typeof(long), (data, address, value) => BinaryPrimitives.WriteInt64BigEndian(data, (long) value)},
+        {typeof(ulong), (data, address, value) => BinaryPrimitives.WriteUInt64BigEndian(data, (ulong) value)},
+
+        {
+            typeof(float), (data, address, value) =>
+            {
+                var map = new UInt32SingleMap
+                {
+                    Single = (float) value
+                };
+
+                BinaryPrimitives.WriteUInt32BigEndian(data, map.UInt32);
+            }
+        },
+        {
+            typeof(double), (data, address, value) =>
+            {
+                var map = new UInt64DoubleMap
+                {
+                    Double = (double) value
+                };
+
+                BinaryPrimitives.WriteUInt64BigEndian(data, map.UInt64);
+            }
+        },
+
+        {
+            typeof(string), (data, address, value) =>
+            {
+                if (value is not string stringValue) throw new ArgumentException("Value must be of type string", nameof(value));
+
+                var length = Math.Min(address.Length, stringValue.Length);
+
+                switch (address.Type)
+                {
+                    case DbType.String:
+                        data[0] = (byte) address.Length;
+                        data[1] = (byte) length;
+
+                        // Todo: Serialize directly to Span, when upgrading to .net
+                        Encoding.ASCII.GetBytes(stringValue)
+                            .AsSpan(0, length)
+                            .CopyTo(data.Slice(2));
+                        return;
+                    case DbType.WString:
+                        BinaryPrimitives.WriteUInt16BigEndian(data, address.Length);
+                        BinaryPrimitives.WriteUInt16BigEndian(data.Slice(2), (ushort) length);
+
+                        // Todo: Serialize directly to Span, when upgrading to .net
+                        Encoding.BigEndianUnicode.GetBytes(stringValue)
+                            .AsSpan(0, length * 2)
+                            .CopyTo(data.Slice(4));
+                        return;
+                    case DbType.Byte:
+                        // Todo: Serialize directly to Span, when upgrading to .net
+                        Encoding.ASCII.GetBytes(stringValue)
+                            .AsSpan(0, length)
+                            .CopyTo(data);
+                        return;
+                    default:
+                        throw new DataTypeMissmatchException($"Cannot write string to {address.Type}", typeof(string), address);
+                }
+            }
+        }
+    };
+
+    private static readonly Dictionary<Type, ReadFunc> readFunctions = new()
     {
         {typeof(bool), (buffer, address) => (buffer[0] >> address.Bit & 1) > 0},
 
         {typeof(byte), (buffer, address) => buffer[0]},
-        {typeof(byte[]), (buffer, address) => buffer},
+        {typeof(byte[]), (buffer, address) => buffer.ToArray()},
 
         {typeof(short), (buffer, address) => BinaryPrimitives.ReadInt16BigEndian(buffer)},
         {typeof(ushort), (buffer, address) => BinaryPrimitives.ReadUInt16BigEndian(buffer)},
@@ -52,7 +145,7 @@ internal static class S7ValueConverter
                 {
                     DbType.String => ParseString(),
                     DbType.WString => ParseWString(),
-                    DbType.Byte => Encoding.ASCII.GetString(buffer),
+                    DbType.Byte => Encoding.ASCII.GetString(buffer.ToArray()),
                     _ => throw new DataTypeMissmatchException($"Cannot read string from {address.Type}", typeof(string), address)
                 };
 
@@ -74,7 +167,7 @@ internal static class S7ValueConverter
                     // https://support.industry.siemens.com/cs/mdm/109747174?c=94063855243&lc=de-DE
 
                     // the length of the string is two bytes per 
-                    var length = Math.Min(address.Length, BinaryPrimitives.ReadUInt16BigEndian(buffer.AsSpan(2,2))) * 2;
+                    var length = Math.Min(address.Length, BinaryPrimitives.ReadUInt16BigEndian(buffer.AsSpan(2, 2))) * 2;
 
                     return Encoding.BigEndianUnicode.GetString(buffer, 4, length);
                 }
@@ -85,6 +178,9 @@ internal static class S7ValueConverter
     public static TValue ReadFromBuffer<TValue>(byte[] buffer, S7VariableAddress address)
     {
         // Todo: Change to Span<byte> when switched to newer .net
+
+        if (buffer.Length < address.BufferLength)
+            throw new ArgumentException($"Buffer must be at least {address.BufferLength} bytes long for {address}", nameof(buffer));
 
         var type = typeof(TValue);
 
@@ -98,78 +194,17 @@ internal static class S7ValueConverter
     public static void WriteToBuffer<TValue>(Span<byte> buffer, TValue value, S7VariableAddress address)
     {
         if (buffer.Length < address.BufferLength)
-            throw new ArgumentException($"buffer must be at least {address.BufferLength} bytes long for {address}", nameof(buffer));
+            throw new ArgumentException($"Buffer must be at least {address.BufferLength} bytes long for {address}", nameof(buffer));
 
-        if (typeof(TValue) == typeof(bool))
-        {
-            var byteValue = (bool) (object) value ? (byte) 1 : (byte) 0;
-            var shifted = (byte) (byteValue << address.Bit);
-            buffer[0] = shifted;
-        }
+        var type = typeof(TValue);
 
-        else if (typeof(TValue) == typeof(int))
-        {
-            if (address.Length == 2)
-                BinaryPrimitives.WriteInt16BigEndian(buffer, (short) (int) (object) value);
-            else
-                BinaryPrimitives.WriteInt32BigEndian(buffer, (int) (object) value);
-        }
-        else if (typeof(TValue) == typeof(short))
-        {
-            if (address.Length == 2)
-                BinaryPrimitives.WriteInt16BigEndian(buffer, (short) (object) value);
-            else
-                BinaryPrimitives.WriteInt32BigEndian(buffer, (short) (object) value);
-        }
-        else if (typeof(TValue) == typeof(long))
-            BinaryPrimitives.WriteInt64BigEndian(buffer, (long) (object) value);
-        else if (typeof(TValue) == typeof(ulong))
-            BinaryPrimitives.WriteUInt64BigEndian(buffer, (ulong) (object) value);
-        else if (typeof(TValue) == typeof(byte))
-            buffer[0] = (byte) (object) value;
-        else if (typeof(TValue) == typeof(byte[]))
-        {
-            var source = (byte[]) (object) value;
+        if (!writeFunctions.TryGetValue(type, out var writeFunc))
+            throw new UnsupportedS7TypeException($"{type.Name} is not supported. {address}", type, address);
 
-            var length = Math.Min(Math.Min(source.Length, buffer.Length), address.Length);
-
-            source.AsSpan(0, length).CopyTo(buffer);
-        }
-        else if (typeof(TValue) == typeof(float))
-        {
-            var map = new UInt32SingleMap
-            {
-                Single = (float) (object) value
-            };
-
-            BinaryPrimitives.WriteUInt32BigEndian(buffer, map.UInt32);
-        }
-        else if (typeof(TValue) == typeof(string))
-        {
-            if (value is not string stringValue) throw new ArgumentException("Value must be of type string", nameof(value));
-
-            // Todo: Serialize directly to Span, when upgrading to .net
-            var stringBytes = Encoding.ASCII.GetBytes(stringValue);
-
-            var length = Math.Min(address.Length, stringValue.Length);
-
-            int stringOffset;
-            if (address.Type == DbType.String)
-            {
-                stringOffset = 2;
-                buffer[0] = (byte) address.Length;
-                buffer[1] = (byte) length;
-            }
-            else
-                stringOffset = 0;
-
-            stringBytes.AsSpan(0, length).CopyTo(buffer.Slice(stringOffset));
-        }
-        else
-        {
-            throw new InvalidOperationException($"type '{typeof(TValue)}' not supported.");
-        }
+        writeFunc(buffer, address, value);
     }
+
+    delegate object ReadFunc(byte[] data, S7VariableAddress address);
 
     [StructLayout(LayoutKind.Explicit)]
     private struct UInt32SingleMap
@@ -184,4 +219,6 @@ internal static class S7ValueConverter
         [FieldOffset(0)] public ulong UInt64;
         [FieldOffset(0)] public double Double;
     }
+
+    delegate void WriteFunc(Span<byte> data, S7VariableAddress address, object value);
 }

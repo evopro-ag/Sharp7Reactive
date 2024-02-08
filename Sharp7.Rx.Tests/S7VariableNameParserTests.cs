@@ -17,6 +17,7 @@ internal class S7VariableNameParserTests
     }
 
     [TestCase("DB506.Bit216", TestName = "Bit without Bit")]
+    [TestCase("DB506.Bit216.8", TestName = "Bit to high")]
     [TestCase("DB506.String216", TestName = "String without Length")]
     [TestCase("DB506.WString216", TestName = "WString without Length")]
 
