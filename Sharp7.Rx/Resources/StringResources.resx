@@ -123,16 +123,10 @@
   <data name="StrLogWarningCommunictionErrorReconnecting" xml:space="preserve">
     <value>Communication error discovered. Reconnect is in progress...</value>
   </data>
-  <data name="StrErrorS7DriverNotInitialized" xml:space="preserve">
-    <value>S7 driver is not initialized.</value>
-  </data>
   <data name="StrInfoTryConnecting" xml:space="preserve">
     <value>Trying to connect to PLC ({2}) '{0}', CPU slot {1}...</value>
   </data>
   <data name="StrInfoConnectionEstablished" xml:space="preserve">
     <value>TCP/IP connection established.</value>
-  </data>
-  <data name="StrErrorS7DriverCouldNotBeInitialized" xml:space="preserve">
-    <value>S7 driver could not be initialized</value>
   </data>
 </root>

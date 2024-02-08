@@ -164,10 +164,7 @@ public class Sharp7Plc : IPlc
             // Special handling for bools, which are written on a by-bit basis. Writing a complete byte would
             // overwrite other bits within this byte.
 
-            if (address.Bit == null)
-                throw new InvalidOperationException("Address must have a Bit to write a bool.");
-
-            await s7Connector.WriteBit(address.Operand, address.Start, address.Bit.Value, (bool) (object) value, address.DbNr, token);
+            await s7Connector.WriteBit(address.Operand, address.Start, address.Bit!.Value, (bool) (object) value, address.DbNr, token);
         }
         else
         {

@@ -11,6 +11,24 @@ public abstract class S7Exception : Exception
     }
 }
 
+public class S7CommunicationException : S7Exception
+{
+    public S7CommunicationException(string message, int s7ErrorCode, string s7ErrorText) : base(message)
+    {
+        S7ErrorCode = s7ErrorCode;
+        S7ErrorText = s7ErrorText;
+    }
+
+    public S7CommunicationException(string message, Exception innerException, int s7ErrorCode, string s7ErrorText) : base(message, innerException)
+    {
+        S7ErrorCode = s7ErrorCode;
+        S7ErrorText = s7ErrorText;
+    }
+
+    public int S7ErrorCode { get; }
+    public string S7ErrorText { get; }
+}
+
 public class DataTypeMissmatchException : S7Exception
 {
     internal DataTypeMissmatchException(string message, Type type, S7VariableAddress address) : base(message)
