@@ -52,7 +52,7 @@ internal class S7VariableNameParser : IS7VariableNameParser
 
         var match = regex.Match(input);
         if (!match.Success)
-            throw new InvalidS7AddressException($"Invalid S7 address: \"{input}\"", input);
+            throw new InvalidS7AddressException($"Invalid S7 address \"{input}\". Expect format \"DB<dbNo>.<type><startByte>(.<length>)\".", input);
 
         var operand = (Operand) Enum.Parse(typeof(Operand), match.Groups["operand"].Value, true);
 
