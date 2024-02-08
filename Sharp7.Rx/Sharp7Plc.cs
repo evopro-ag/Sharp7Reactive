@@ -90,7 +90,7 @@ public class Sharp7Plc : IPlc
                 Observable.FromAsync(() => GetValue<TValue>(variableName))
                     .Concat(
                         disposeableContainer.Observable
-                            .Select(bytes => S7ValueConverter.ConvertToType<TValue>(bytes, address))
+                            .Select(bytes => S7ValueConverter.ReadFromBuffer<TValue>(bytes, address))
                     );
 
             if (transmissionMode == TransmissionMode.OnChange)
@@ -121,7 +121,7 @@ public class Sharp7Plc : IPlc
         if (address == null) throw new ArgumentException("Input variable name is not valid", nameof(variableName));
 
         var data = await s7Connector.ReadBytes(address.Operand, address.Start, address.Length, address.DbNr, token);
-        return S7ValueConverter.ConvertToType<TValue>(data, address);
+        return S7ValueConverter.ReadFromBuffer<TValue>(data, address);
     }
 
     public async Task<bool> InitializeAsync()

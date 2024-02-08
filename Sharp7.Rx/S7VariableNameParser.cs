@@ -28,12 +28,15 @@ internal class S7VariableNameParser : IS7VariableNameParser
         {"real", DbType.Single},
         {"lreal", DbType.Double},
 
-        // used for legacy compatability
-        {"b", DbType.Byte},
-        {"d", DbType.Single},
+        // S7 notation
         {"dbb", DbType.Byte},
         {"dbw", DbType.Int},
         {"dbx", DbType.Bit},
+        {"dbd", DbType.DInt},
+
+        // used for legacy compatability
+        {"b", DbType.Byte},
+        {"d", DbType.Single},
         {"dul", DbType.ULInt},
         {"dulint", DbType.ULInt},
         {"dulong", DbType.ULInt},

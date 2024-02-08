@@ -7,7 +7,7 @@ namespace Sharp7.Rx;
 
 internal static class S7ValueConverter
 {
-    public static TValue ConvertToType<TValue>(byte[] buffer, S7VariableAddress address)
+    public static TValue ReadFromBuffer<TValue>(byte[] buffer, S7VariableAddress address)
     {
         if (typeof(TValue) == typeof(bool))
             return (TValue) (object) (((buffer[0] >> address.Bit) & 1) > 0);
