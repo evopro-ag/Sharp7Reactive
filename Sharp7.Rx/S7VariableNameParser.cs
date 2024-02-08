@@ -145,6 +145,11 @@ internal class S7VariableNameParser : IS7VariableNameParser
             if (!byte.TryParse(match.Groups["bitOrLength"].Value, out var result))
                 throw new InvalidS7AddressException($"\"{match.Groups["bitOrLength"].Value}\" is an invalid bit number in \"{input}\"", input);
 
+            if (result > 7)
+                throw new InvalidS7AddressException($"Bit must be between 0 and 7 but is {result} in \"{input}\"", input);
+
+
+
             return result;
         }
     }
