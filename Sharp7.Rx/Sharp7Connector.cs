@@ -6,7 +6,6 @@ using Sharp7.Rx.Basics;
 using Sharp7.Rx.Enums;
 using Sharp7.Rx.Extensions;
 using Sharp7.Rx.Interfaces;
-using Sharp7.Rx.Resources;
 using Sharp7.Rx.Settings;
 
 namespace Sharp7.Rx;
