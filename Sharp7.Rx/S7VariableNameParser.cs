@@ -148,8 +148,6 @@ internal class S7VariableNameParser : IS7VariableNameParser
             if (result > 7)
                 throw new InvalidS7AddressException($"Bit must be between 0 and 7 but is {result} in \"{input}\"", input);
 
-
-
             return result;
         }
     }
