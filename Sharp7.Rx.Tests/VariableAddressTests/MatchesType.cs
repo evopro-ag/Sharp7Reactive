@@ -1,15 +1,15 @@
 ﻿using NUnit.Framework;
 using Sharp7.Rx.Extensions;
 using Sharp7.Rx.Interfaces;
-using Sharp7.Rx.Tests.S7ValueConverterTests;
+using Sharp7.Rx.Tests.ValueConverterTests;
 using Shouldly;
 
-namespace Sharp7.Rx.Tests.S7VariableAddressTests;
+namespace Sharp7.Rx.Tests.VariableAddressTests;
 
 [TestFixture]
 public class MatchesType
 {
-    static readonly IS7VariableNameParser parser = new S7VariableNameParser();
+    static readonly IVariableNameParser parser = new VariableNameParser();
 
     private static readonly IReadOnlyList<Type> typeList = new[]
     {
@@ -61,10 +61,10 @@ public class MatchesType
 
                 // Explicitly remove some valid combinations
                 .Where(tc => !(
-                            (tc.Type == typeof(string) && tc.Address == "DB99.Byte5") ||
-                            (tc.Type == typeof(string) && tc.Address == "DB99.Byte5.4") ||
-                            (tc.Type == typeof(byte[]) && tc.Address == "DB99.Byte5") 
-                           ))
+                           (tc.Type == typeof(string) && tc.Address == "DB99.Byte5") ||
+                           (tc.Type == typeof(string) && tc.Address == "DB99.Byte5.4") ||
+                           (tc.Type == typeof(byte[]) && tc.Address == "DB99.Byte5")
+                       ))
             ;
     }
 

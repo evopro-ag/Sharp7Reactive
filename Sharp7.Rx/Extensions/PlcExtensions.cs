@@ -9,7 +9,8 @@ namespace Sharp7.Rx.Extensions;
 
 public static class PlcExtensions
 {
-    public static IObservable<TReturn> CreateDatatransferWithHandshake<TReturn>(this IPlc plc, string triggerAddress, string ackTriggerAddress, Func<IPlc, Task<TReturn>> readData, bool initialTransfer)
+    public static IObservable<TReturn> CreateDatatransferWithHandshake<TReturn>(this IPlc plc, string triggerAddress, string ackTriggerAddress, Func<IPlc, Task<TReturn>> readData,
+        bool initialTransfer)
     {
         return Observable.Create<TReturn>(async observer =>
         {

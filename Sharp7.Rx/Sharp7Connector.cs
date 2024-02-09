@@ -20,13 +20,13 @@ internal class Sharp7Connector : IS7Connector
     private readonly int port;
     private readonly int rackNr;
     private readonly LimitedConcurrencyLevelTaskScheduler scheduler = new(maxDegreeOfParallelism: 1);
-    private readonly IS7VariableNameParser variableNameParser;
+    private readonly IVariableNameParser variableNameParser;
     private bool disposed;
 
     private S7Client sharp7;
 
 
-    public Sharp7Connector(PlcConnectionSettings settings, IS7VariableNameParser variableNameParser)
+    public Sharp7Connector(PlcConnectionSettings settings, IVariableNameParser variableNameParser)
     {
         this.variableNameParser = variableNameParser;
         ipAddress = settings.IpAddress;
@@ -86,7 +86,7 @@ internal class Sharp7Connector : IS7Connector
         await CloseConnection();
     }
 
-    public async Task<Dictionary<string, byte[]>> ExecuteMultiVarRequest(IReadOnlyList<string> variableNames)
+    public async Task<IReadOnlyDictionary<string, byte[]>> ExecuteMultiVarRequest(IReadOnlyList<string> variableNames)
     {
         if (variableNames.IsEmpty())
             return new Dictionary<string, byte[]>();
@@ -98,17 +98,14 @@ internal class Sharp7Connector : IS7Connector
             .Select(x =>
             {
                 var buffer = new byte[x.Address.Length];
-                s7MultiVar.Add(S7Consts.S7AreaDB, S7Consts.S7WLByte, x.Address.DbNr, x.Address.Start, x.Address.Length, ref buffer);
+                s7MultiVar.Add(S7Consts.S7AreaDB, S7Consts.S7WLByte, x.Address.DbNo, x.Address.Start, x.Address.Length, ref buffer);
                 return new {x.VariableName, Buffer = buffer};
             })
             .ToArray();
 
         var result = await Task.Factory.StartNew(() => s7MultiVar.Read(), CancellationToken.None, TaskCreationOptions.None, scheduler);
-        if (result != 0)
-        {
-            var errorText = EvaluateErrorCode(result);
-            throw new S7CommunicationException($"Error in MultiVar request for variables: {string.Join(",", variableNames)} ({errorText})", result, errorText);
-        }
+
+        EnsureSuccessOrThrow(result, $"Error in MultiVar request for variables: {string.Join(",", variableNames)}");
 
         return buffers.ToDictionary(arg => arg.VariableName, arg => arg.Buffer);
     }
@@ -150,11 +147,7 @@ internal class Sharp7Connector : IS7Connector
             await Task.Factory.StartNew(() => sharp7.ReadArea(operand.ToArea(), dbNo, startByteAddress, bytesToRead, S7WordLength.Byte, buffer), token, TaskCreationOptions.None, scheduler);
         token.ThrowIfCancellationRequested();
 
-        if (result != 0)
-        {
-            var errorText = EvaluateErrorCode(result);
-            throw new S7CommunicationException($"Error reading {operand}{dbNo}:{startByteAddress}->{bytesToRead} ({errorText})", result, errorText);
-        }
+        EnsureSuccessOrThrow(result, $"Error reading {operand}{dbNo}:{startByteAddress}->{bytesToRead}");
 
         return buffer;
     }
@@ -170,11 +163,7 @@ internal class Sharp7Connector : IS7Connector
         var result = await Task.Factory.StartNew(() => sharp7.WriteArea(operand.ToArea(), dbNo, offsetStart, 1, S7WordLength.Bit, buffer), token, TaskCreationOptions.None, scheduler);
         token.ThrowIfCancellationRequested();
 
-        if (result != 0)
-        {
-            var errorText = EvaluateErrorCode(result);
-            throw new S7CommunicationException($"Error writing {operand}{dbNo}:{startByteAddress} bit {bitAdress} ({errorText})", result, errorText);
-        }
+        EnsureSuccessOrThrow(result, $"Error writing {operand}{dbNo}:{startByteAddress} bit {bitAdress}");
     }
 
     public async Task WriteBytes(Operand operand, ushort startByteAddress, byte[] data, ushort dbNo, CancellationToken token)
@@ -184,11 +173,7 @@ internal class Sharp7Connector : IS7Connector
         var result = await Task.Factory.StartNew(() => sharp7.WriteArea(operand.ToArea(), dbNo, startByteAddress, data.Length, S7WordLength.Byte, data), token, TaskCreationOptions.None, scheduler);
         token.ThrowIfCancellationRequested();
 
-        if (result != 0)
-        {
-            var errorText = EvaluateErrorCode(result);
-            throw new S7CommunicationException($"Error writing {operand}{dbNo}:{startByteAddress}.{data.Length} ({errorText})", result, errorText);
-        }
+        EnsureSuccessOrThrow(result, $"Error writing {operand}{dbNo}:{startByteAddress}.{data.Length}");
     }
 
 
@@ -206,6 +191,7 @@ internal class Sharp7Connector : IS7Connector
                     sharp7 = null;
                 }
 
+                connectionStateSubject?.OnNext(Enums.ConnectionState.Disposed);
                 connectionStateSubject?.OnCompleted();
                 connectionStateSubject?.Dispose();
             }
@@ -234,6 +220,20 @@ internal class Sharp7Connector : IS7Connector
             throw new InvalidOperationException("Plc is not connected");
     }
 
+    private void EnsureSuccessOrThrow(int result, string message)
+    {
+        if (result == 0) return;
+
+        var errorText = EvaluateErrorCode(result);
+        var completeMessage = $"{message}: {errorText}";
+
+        var additionalErrorText = S7ErrorCodes.GetAdditionalErrorText(result);
+        if (additionalErrorText != null)
+            completeMessage += Environment.NewLine + additionalErrorText;
+
+        throw new S7CommunicationException(completeMessage, result, errorText);
+    }
+
     private string EvaluateErrorCode(int errorCode)
     {
         if (errorCode == 0)
@@ -242,8 +242,8 @@ internal class Sharp7Connector : IS7Connector
         if (sharp7 == null)
             throw new InvalidOperationException("S7 driver is not initialized.");
 
-        var errorText = sharp7.ErrorText(errorCode);
-        Logger?.LogError($"Error Code {errorCode} {errorText}");
+        var errorText = $"0x{errorCode:X}, {sharp7.ErrorText(errorCode)}";
+        Logger?.LogError($"S7 Error {errorText}");
 
         if (S7ErrorCodes.AssumeConnectionLost(errorCode))
             SetConnectionLostState();

@@ -5,5 +5,6 @@ public enum ConnectionState
     Initial,
     Connected,
     DisconnectedByUser,
-    ConnectionLost
+    ConnectionLost,
+    Disposed
 }

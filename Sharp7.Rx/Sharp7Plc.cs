@@ -17,7 +17,7 @@ public class Sharp7Plc : IPlc
     private readonly ConcurrentSubjectDictionary<string, byte[]> multiVariableSubscriptions = new(StringComparer.InvariantCultureIgnoreCase);
     private readonly List<long> performanceCoutner = new(1000);
     private readonly PlcConnectionSettings plcConnectionSettings;
-    private readonly IS7VariableNameParser varaibleNameParser = new CacheVariableNameParser(new S7VariableNameParser());
+    private readonly CacheVariableNameParser varaibleNameParser = new CacheVariableNameParser(new VariableNameParser());
     private bool disposed;
     private Sharp7Connector s7Connector;
 
@@ -89,7 +89,7 @@ public class Sharp7Plc : IPlc
                 Observable.FromAsync(() => GetValue<TValue>(variableName))
                     .Concat(
                         disposeableContainer.Observable
-                            .Select(bytes => S7ValueConverter.ReadFromBuffer<TValue>(bytes, address))
+                            .Select(bytes => ValueConverter.ReadFromBuffer<TValue>(bytes, address))
                     );
 
             if (transmissionMode == TransmissionMode.OnChange)
@@ -100,15 +100,6 @@ public class Sharp7Plc : IPlc
 
             return disp;
         });
-    }
-
-    private S7VariableAddress ParseAndVerify(string variableName, Type type)
-    {
-        var address = varaibleNameParser.Parse(variableName);
-        if (!address.MatchesType(type))
-            throw new DataTypeMissmatchException($"Address \"{variableName}\" does not match type {type}.", type, address);
-
-        return address;
     }
 
     public Task<TValue> GetValue<TValue>(string variableName)
@@ -127,8 +118,8 @@ public class Sharp7Plc : IPlc
     {
         var address = ParseAndVerify(variableName, typeof(TValue));
 
-        var data = await s7Connector.ReadBytes(address.Operand, address.Start, address.Length, address.DbNr, token);
-        return S7ValueConverter.ReadFromBuffer<TValue>(data, address);
+        var data = await s7Connector.ReadBytes(address.Operand, address.Start, address.BufferLength, address.DbNo, token);
+        return ValueConverter.ReadFromBuffer<TValue>(data, address);
     }
 
     public async Task<bool> InitializeAsync()
@@ -164,15 +155,15 @@ public class Sharp7Plc : IPlc
             // Special handling for bools, which are written on a by-bit basis. Writing a complete byte would
             // overwrite other bits within this byte.
 
-            await s7Connector.WriteBit(address.Operand, address.Start, address.Bit!.Value, (bool) (object) value, address.DbNr, token);
+            await s7Connector.WriteBit(address.Operand, address.Start, address.Bit!.Value, (bool) (object) value, address.DbNo, token);
         }
         else
         {
             // TODO: Use ArrayPool.Rent() once we drop Framwework support
             var bytes = new byte[address.BufferLength];
-            S7ValueConverter.WriteToBuffer(bytes, value, address);
+            ValueConverter.WriteToBuffer(bytes, value, address);
 
-            await s7Connector.WriteBytes(address.Operand, address.Start, bytes, address.DbNr, token);
+            await s7Connector.WriteBytes(address.Operand, address.Start, bytes, address.DbNo, token);
         }
     }
 
@@ -220,6 +211,15 @@ public class Sharp7Plc : IPlc
         PrintAndResetPerformanceStatistik();
 
         return Unit.Default;
+    }
+
+    private VariableAddress ParseAndVerify(string variableName, Type type)
+    {
+        var address = varaibleNameParser.Parse(variableName);
+        if (!address.MatchesType(type))
+            throw new DataTypeMissmatchException($"Address \"{variableName}\" does not match type {type}.", type, address);
+
+        return address;
     }
 
     private void PrintAndResetPerformanceStatistik()
