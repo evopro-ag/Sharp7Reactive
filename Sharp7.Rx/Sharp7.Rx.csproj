@@ -12,7 +12,8 @@
     <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
     <Authors>evopro system engineering AG</Authors>
     <Company>evopro system engineering AG</Company>
-    <Description>Reactive framework for Sharp7, the Ethernet S7 PLC communication suite</Description>
+    <Description>Reactive framework for Sharp7, the Ethernet S7 PLC communication suite. Handling RFC1006 connections to Siemens S7 300, 1200 and 1500.</Description>
+    <PackageTags>linqpad-samples</PackageTags>
     <PackageProjectUrl>https://github.com/evopro-ag/Sharp7Reactive</PackageProjectUrl>
     <PackageLicenseUrl>https://raw.githubusercontent.com/evopro-ag/Sharp7Reactive/master/LICENSE</PackageLicenseUrl>
     <IncludeSymbols>true</IncludeSymbols>
