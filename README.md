@@ -82,6 +82,21 @@ Here is a table of supported data types:
 
 > Identifiers marked with * are kept for compatability reasons and might be removed in the future.
 
+## Performance considerations
+
+Frequent reads of variables using `GetValue` can cause performance pressure on the S7 PLC, resulting in an increase of cycle time.
+
+If you frequently read variables, like polling triggers, use `CreateNotification`. Internally all variable polling initialized with `CreateNotification` is pooled to a single (or some) multi-variable-reads.
+
+You can provide a cycle time (delay between consecutive multi variable reads) in the `Sharp7Plc` constructor:
+
+```csharp
+public Sharp7Plc(string ipAddress, int rackNumber, int cpuMpiAddress, int port = 102, TimeSpan? multiVarRequestCycleTime = null)
+```
+
+The default value for `multiVarRequestCycleTime` is 100 ms, the minimal value is 5 ms.
+
+
 ## Would you like to contribute?
 
 Yes, please!
