@@ -27,4 +27,10 @@
     <PackageReference Include="System.Reactive" Version="6.0.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="linqpad-samples/**/*.*">
+      <Pack>true</Pack>
+      <PackagePath>linqpad-samples\;content</PackagePath>
+    </Content>
+  </ItemGroup>
 </Project>
