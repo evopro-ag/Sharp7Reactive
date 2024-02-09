@@ -15,9 +15,9 @@ public class Sharp7Plc : IPlc
 {
     private readonly CompositeDisposable disposables = new();
     private readonly ConcurrentSubjectDictionary<string, byte[]> multiVariableSubscriptions = new(StringComparer.InvariantCultureIgnoreCase);
-    private readonly List<long> performanceCoutner = new(1000);
+    private readonly List<long> performanceCounter = new(1000);
     private readonly PlcConnectionSettings plcConnectionSettings;
-    private readonly CacheVariableNameParser varaibleNameParser = new CacheVariableNameParser(new VariableNameParser());
+    private readonly CacheVariableNameParser variableNameParser = new CacheVariableNameParser(new VariableNameParser());
     private bool disposed;
     private Sharp7Connector s7Connector;
 
@@ -30,11 +30,11 @@ public class Sharp7Plc : IPlc
     /// <param name="port"></param>
     /// <param name="multiVarRequestCycleTime">
     ///     <para>
-    ///         Polling interval used to read multi variable requests from PLC.
+    ///         Polling interval for multi variable read from PLC.
     ///     </para>
     ///     <para>
     ///         This is the wait time between two successive reads from PLC and determines the
-    ///         time resolution for all variable reads reated with CreateNotification.
+    ///         time resolution for all variable reads related with CreateNotification.
     ///     </para>
     ///     <para>
     ///         Default is 100 ms. The minimum supported time is 5 ms.
@@ -43,7 +43,7 @@ public class Sharp7Plc : IPlc
     public Sharp7Plc(string ipAddress, int rackNumber, int cpuMpiAddress, int port = 102, TimeSpan? multiVarRequestCycleTime = null)
     {
         plcConnectionSettings = new PlcConnectionSettings {IpAddress = ipAddress, RackNumber = rackNumber, CpuMpiAddress = cpuMpiAddress, Port = port};
-        s7Connector = new Sharp7Connector(plcConnectionSettings, varaibleNameParser);
+        s7Connector = new Sharp7Connector(plcConnectionSettings, variableNameParser);
         ConnectionState = s7Connector.ConnectionState;
 
         if (multiVarRequestCycleTime != null)
@@ -80,15 +80,15 @@ public class Sharp7Plc : IPlc
             var address = ParseAndVerify(variableName, typeof(TValue));
 
             var disp = new CompositeDisposable();
-            var disposeableContainer = multiVariableSubscriptions.GetOrCreateObservable(variableName);
-            disposeableContainer.AddDisposableTo(disp);
+            var disposableContainer = multiVariableSubscriptions.GetOrCreateObservable(variableName);
+            disposableContainer.AddDisposableTo(disp);
 
             var observable =
-                // Directly read variable first.
+                // Read variable with GetValue first.
                 // This will propagate any errors due to reading from invalid addresses.
                 Observable.FromAsync(() => GetValue<TValue>(variableName))
                     .Concat(
-                        disposeableContainer.Observable
+                        disposableContainer.Observable
                             .Select(bytes => ValueConverter.ReadFromBuffer<TValue>(bytes, address))
                     );
 
@@ -206,7 +206,7 @@ public class Sharp7Plc : IPlc
         }
 
         stopWatch.Stop();
-        performanceCoutner.Add(stopWatch.ElapsedMilliseconds);
+        performanceCounter.Add(stopWatch.ElapsedMilliseconds);
 
         PrintAndResetPerformanceStatistik();
 
@@ -215,7 +215,7 @@ public class Sharp7Plc : IPlc
 
     private VariableAddress ParseAndVerify(string variableName, Type type)
     {
-        var address = varaibleNameParser.Parse(variableName);
+        var address = variableNameParser.Parse(variableName);
         if (!address.MatchesType(type))
             throw new DataTypeMissmatchException($"Address \"{variableName}\" does not match type {type}.", type, address);
 
@@ -224,17 +224,17 @@ public class Sharp7Plc : IPlc
 
     private void PrintAndResetPerformanceStatistik()
     {
-        if (performanceCoutner.Count == performanceCoutner.Capacity)
+        if (performanceCounter.Count == performanceCounter.Capacity)
         {
-            var average = performanceCoutner.Average();
-            var min = performanceCoutner.Min();
-            var max = performanceCoutner.Max();
+            var average = performanceCounter.Average();
+            var min = performanceCounter.Min();
+            var max = performanceCounter.Max();
 
             Logger?.LogTrace("Performance statistic during {0} elements of plc notification. Min: {1}, Max: {2}, Average: {3}, Plc: '{4}', Number of variables: {5}, Batch size: {6}",
-                             performanceCoutner.Capacity, min, max, average, plcConnectionSettings.IpAddress,
+                             performanceCounter.Capacity, min, max, average, plcConnectionSettings.IpAddress,
                              multiVariableSubscriptions.ExistingKeys.Count(),
                              MultiVarRequestMaxItems);
-            performanceCoutner.Clear();
+            performanceCounter.Clear();
         }
     }
 
