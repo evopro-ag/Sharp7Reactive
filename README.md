@@ -50,21 +50,37 @@ using (var disposables = new CompositeDisposable())
 
 the best way to test your PLC application is running your [SoftPLC](https://github.com/fbarresi/softplc) locally.
 
-## S7 Addressing rules
+## Addressing rules
 
 Sharp7Reactive uses a syntax for identifying addresses similar to official siemens syntax. 
-Every address has the form (case unsensible) `DB<number>.<TYPE><Start>.<Length/Position>`.
-<br/>i.e.: `DB42.DBX0.7` => (means) Datablock 42, bit (DBX), Start: 0, Position: 7 
-<br/>or<br/>
-`DB42.DBB4.25` => (means) Datablock 42, bytes (DBB), Start: 4, Length: 25.
+Every address has the form (case unsensitive) `DB<number>.<TYPE><Start>.<Length/Position>`.
 
-Following types are supported:
-- `DBX` => Bit (bool)
-- `DBB` => byte or byte[]
-- `INT`
-- `DINT`
-- `DUL` => LINT
-- `D` => REAL
+| Example                              | Explaination                                                      |
+| ------------------------------------ | ----------------------------------------------------------------- |
+| `DB42.Int4` or<br> `DB42.DBD4`       | Datablock 42, 16 bit integer from bytes 4 to 5 (zero based index) |
+| `DB42.Bit0.7` or<br>`DB42.DBX0.7`    | Datablock 42, bit from byte 0, position 7                         |
+| `DB42.Byte4.25` or<br>`DB42.DBB4.25` | Datablock 42, 25 bytes from byte 4 to 29 (zero based index)       |
+
+Here is a table of supported data types:
+
+|.Net Type|Identifier                   |Description                                   |Length or bit                           |Example            |Example remark            |
+|---------|-----------------------------|----------------------------------------------|----------------------------------------|-------------------|--------------------------|
+|bool     |bit, dbx                     |Bit as boolean value                          |Bit index (0 .. 7)                      |`Db200.Bit2.2`     |Reads bit 3               |
+|byte     |byte, dbb, b*                |8 bit unsigned integer                        |                                        |`Db200.Byte4`      |                          |
+|byte[]   |byte, dbb, b*                |Array of bytes                                |Array length in bytes                   |`Db200.Byte4.16`   |                          |
+|short    |int, dbw, w*                 |16 bit signed integer                         |                                        |`Db200.Int4`       |                          |
+|ushort   |uint                         |16 bit unsigned integer                       |                                        |`Db200.UInt4`      |                          |
+|int      |dint, dbd                    |32 bit signed integer                         |                                        |`Db200.DInt4`      |                          |
+|uint     |udint                        |32 bit unsigned integer                       |                                        |`Db200.UDInt4`     |                          |
+|long     |lint                         |64 bit signed integer                         |                                        |`Db200.LInt4`      |                          |
+|ulong    |ulint, dul*, dulint*, dulong*|64 bit unsigned integer                       |                                        |`Db200.ULInt4`     |                          |
+|float    |real, d*                     |32 bit float                                  |                                        |`Db200.Real4`      |                          |
+|double   |lreal                        |64 bit float                                  |                                        |`Db200.LReal4`     |                          |
+|string   |string, s*                   |ASCII text string with string size            |String length in bytes (1 .. 254)       |`Db200.String4.16` |Uses 18 bytes = 16 + 2    |
+|string   |wstring                      |UTF-16 Big Endian text string with string size|String length in characters (1 .. 16382)|`Db200.WString4.16`|Uses 36 bytes = 16 * 2 + 4|
+|string   |byte[]                       |ASCII string as byte array                    |String length in bytes                  |`Db200.Byte4.16`   |Uses 16 bytes             |
+
+> Identifiers marked with * are kept for compatability reasons and might be removed in the future.
 
 ## Would you like to contribute?
 
