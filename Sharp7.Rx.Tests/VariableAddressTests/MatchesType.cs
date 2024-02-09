@@ -61,10 +61,10 @@ public class MatchesType
 
                 // Explicitly remove some valid combinations
                 .Where(tc => !(
-                            (tc.Type == typeof(string) && tc.Address == "DB99.Byte5") ||
-                            (tc.Type == typeof(string) && tc.Address == "DB99.Byte5.4") ||
-                            (tc.Type == typeof(byte[]) && tc.Address == "DB99.Byte5") 
-                           ))
+                           (tc.Type == typeof(string) && tc.Address == "DB99.Byte5") ||
+                           (tc.Type == typeof(string) && tc.Address == "DB99.Byte5.4") ||
+                           (tc.Type == typeof(byte[]) && tc.Address == "DB99.Byte5")
+                       ))
             ;
     }
 

@@ -118,7 +118,7 @@ public class Sharp7Plc : IPlc
     {
         var address = ParseAndVerify(variableName, typeof(TValue));
 
-        var data = await s7Connector.ReadBytes(address.Operand, address.Start, address.BufferLength, address.DbNr, token);
+        var data = await s7Connector.ReadBytes(address.Operand, address.Start, address.BufferLength, address.DbNo, token);
         return ValueConverter.ReadFromBuffer<TValue>(data, address);
     }
 
@@ -155,7 +155,7 @@ public class Sharp7Plc : IPlc
             // Special handling for bools, which are written on a by-bit basis. Writing a complete byte would
             // overwrite other bits within this byte.
 
-            await s7Connector.WriteBit(address.Operand, address.Start, address.Bit!.Value, (bool) (object) value, address.DbNr, token);
+            await s7Connector.WriteBit(address.Operand, address.Start, address.Bit!.Value, (bool) (object) value, address.DbNo, token);
         }
         else
         {
@@ -163,7 +163,7 @@ public class Sharp7Plc : IPlc
             var bytes = new byte[address.BufferLength];
             ValueConverter.WriteToBuffer(bytes, value, address);
 
-            await s7Connector.WriteBytes(address.Operand, address.Start, bytes, address.DbNr, token);
+            await s7Connector.WriteBytes(address.Operand, address.Start, bytes, address.DbNo, token);
         }
     }
 

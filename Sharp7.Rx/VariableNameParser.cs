@@ -111,15 +111,7 @@ internal class VariableNameParser : IVariableNameParser
         byte? bit = type == DbType.Bit ? GetBit() : null;
 
 
-        var s7VariableAddress = new VariableAddress
-        {
-            Operand = operand,
-            DbNr = dbNr,
-            Start = start,
-            Type = type,
-            Length = length,
-            Bit = bit
-        };
+        var s7VariableAddress = new VariableAddress(Operand: operand, DbNo: dbNr, Type: type, Start: start, Length: length, Bit: bit);
 
         return s7VariableAddress;
 

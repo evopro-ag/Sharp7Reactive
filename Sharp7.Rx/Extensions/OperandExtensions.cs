@@ -13,5 +13,4 @@ internal static class OperandExtensions
             Operand.Db => S7Area.DB,
             _ => throw new ArgumentOutOfRangeException(nameof(operand), operand, null)
         };
-
 }

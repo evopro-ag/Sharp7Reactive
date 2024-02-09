@@ -4,14 +4,14 @@ using Sharp7.Rx.Enums;
 namespace Sharp7.Rx;
 
 [NoReorder]
-internal class VariableAddress
+internal record VariableAddress(Operand Operand, ushort DbNo, DbType Type, ushort Start, ushort Length, byte? Bit = null)
 {
-    public Operand Operand { get; set; }
-    public ushort DbNr { get; set; }
-    public ushort Start { get; set; }
-    public ushort Length { get; set; }
-    public byte? Bit { get; set; }
-    public DbType Type { get; set; }
+    public Operand Operand { get;  } = Operand;
+    public ushort DbNo { get;  } = DbNo;
+    public ushort Start { get; } = Start;
+    public ushort Length { get; } = Length;
+    public byte? Bit { get; } = Bit;
+    public DbType Type { get; } = Type;
 
     public ushort BufferLength => Type switch
     {
@@ -23,10 +23,10 @@ internal class VariableAddress
     public override string ToString() =>
         Type switch
         {
-            DbType.Bit => $"{Operand}{DbNr}.{Type}{Start}.{Bit}",
-            DbType.String => $"{Operand}{DbNr}.{Type}{Start}.{Length}",
-            DbType.WString => $"{Operand}{DbNr}.{Type}{Start}.{Length}",
-            DbType.Byte => Length == 1 ? $"{Operand}{DbNr}.{Type}{Start}" : $"{Operand}{DbNr}.{Type}{Start}.{Length}",
-            _ => $"{Operand}{DbNr}.{Type}{Start}",
+            DbType.Bit => $"{Operand}{DbNo}.{Type}{Start}.{Bit}",
+            DbType.String => $"{Operand}{DbNo}.{Type}{Start}.{Length}",
+            DbType.WString => $"{Operand}{DbNo}.{Type}{Start}.{Length}",
+            DbType.Byte => Length == 1 ? $"{Operand}{DbNo}.{Type}{Start}" : $"{Operand}{DbNo}.{Type}{Start}.{Length}",
+            _ => $"{Operand}{DbNo}.{Type}{Start}",
         };
 }
