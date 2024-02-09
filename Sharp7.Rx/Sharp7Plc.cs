@@ -127,7 +127,7 @@ public class Sharp7Plc : IPlc
     {
         var address = ParseAndVerify(variableName, typeof(TValue));
 
-        var data = await s7Connector.ReadBytes(address.Operand, address.Start, address.Length, address.DbNr, token);
+        var data = await s7Connector.ReadBytes(address.Operand, address.Start, address.BufferLength, address.DbNr, token);
         return S7ValueConverter.ReadFromBuffer<TValue>(data, address);
     }
 
