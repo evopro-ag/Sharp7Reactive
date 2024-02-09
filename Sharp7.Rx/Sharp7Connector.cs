@@ -206,6 +206,7 @@ internal class Sharp7Connector : IS7Connector
                     sharp7 = null;
                 }
 
+                connectionStateSubject?.OnNext(Enums.ConnectionState.Disposed);
                 connectionStateSubject?.OnCompleted();
                 connectionStateSubject?.Dispose();
             }
