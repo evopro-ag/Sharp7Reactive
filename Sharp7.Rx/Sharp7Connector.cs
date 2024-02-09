@@ -98,7 +98,7 @@ internal class Sharp7Connector : IS7Connector
         await CloseConnection();
     }
 
-    public async Task<Dictionary<string, byte[]>> ExecuteMultiVarRequest(IReadOnlyList<string> variableNames)
+    public async Task<IReadOnlyDictionary<string, byte[]>> ExecuteMultiVarRequest(IReadOnlyList<string> variableNames)
     {
         if (variableNames.IsEmpty())
             return new Dictionary<string, byte[]>();

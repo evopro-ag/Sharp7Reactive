@@ -53,11 +53,14 @@ internal class ConcurrentSubjectDictionary<TKey, TValue> : IDisposable
     {
         lock (dictionaryLock)
         {
-            var subject = dictionary.AddOrUpdate(key, k => new SubjectWithRefCounter {Counter = 1, Subject = CreateSubject(k)}, (key1, counter) =>
-            {
-                counter.Counter = counter.Counter + 1;
-                return counter;
-            });
+            var subject = dictionary.AddOrUpdate(
+                key,
+                k => new SubjectWithRefCounter(CreateSubject(k)),
+                (_, subjectWithRefCounter) =>
+                {
+                    subjectWithRefCounter.IncreaseCount();
+                    return subjectWithRefCounter;
+                });
 
             return new DisposableItem<TValue>(subject.Subject.AsObservable(), () => RemoveIfNoLongerInUse(key));
         }
@@ -65,8 +68,7 @@ internal class ConcurrentSubjectDictionary<TKey, TValue> : IDisposable
 
     public bool TryGetObserver(TKey key, out IObserver<TValue> subject)
     {
-        SubjectWithRefCounter subjectWithRefCount;
-        if (dictionary.TryGetValue(key, out subjectWithRefCount))
+        if (dictionary.TryGetValue(key, out var subjectWithRefCount))
         {
             subject = subjectWithRefCount.Subject.AsObserver();
             return true;
@@ -101,15 +103,9 @@ internal class ConcurrentSubjectDictionary<TKey, TValue> : IDisposable
     private void RemoveIfNoLongerInUse(TKey variableName)
     {
         lock (dictionaryLock)
-        {
-            SubjectWithRefCounter subjectWithRefCount;
-            if (dictionary.TryGetValue(variableName, out subjectWithRefCount))
-            {
-                if (subjectWithRefCount.Counter == 1)
-                    dictionary.TryRemove(variableName, out subjectWithRefCount);
-                else subjectWithRefCount.Counter--;
-            }
-        }
+            if (dictionary.TryGetValue(variableName, out var subjectWithRefCount))
+                if (subjectWithRefCount.DecreaseCount() < 1)
+                    dictionary.TryRemove(variableName, out _);
     }
 
     ~ConcurrentSubjectDictionary()
@@ -119,7 +115,16 @@ internal class ConcurrentSubjectDictionary<TKey, TValue> : IDisposable
 
     class SubjectWithRefCounter
     {
-        public int Counter { get; set; }
-        public ISubject<TValue> Subject { get; set; }
+        private int counter = 1;
+
+        public SubjectWithRefCounter(ISubject<TValue> subject)
+        {
+            Subject = subject;
+        }
+
+        public ISubject<TValue> Subject { get; }
+
+        public int DecreaseCount() => Interlocked.Decrement(ref counter);
+        public int IncreaseCount() => Interlocked.Increment(ref counter);
     }
 }
