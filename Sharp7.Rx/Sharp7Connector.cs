@@ -12,6 +12,18 @@ namespace Sharp7.Rx;
 
 internal class Sharp7Connector : IS7Connector
 {
+    private static readonly IReadOnlyDictionary<int, string> additionalErrorTexts = new Dictionary<int, string>
+    {
+        {0xC00000, "This happens when the DB does not exist."},
+        {0x900000, "This happens when the DB is not long enough."},
+        {
+            0x40000, """
+                     This error occurs when the DB is "optimized" or "PUT/GET communication" is not enabled.
+                     See https://snap7.sourceforge.net/snap7_client.html#target_compatibility.
+                     """
+        }
+    };
+
     private readonly BehaviorSubject<ConnectionState> connectionStateSubject = new(Enums.ConnectionState.Initial);
     private readonly int cpuSlotNr;
 
@@ -176,15 +188,6 @@ internal class Sharp7Connector : IS7Connector
         EnsureSuccessOrThrow(result, $"Error writing {operand}{dbNo}:{startByteAddress}.{data.Length}");
     }
 
-    private void EnsureSuccessOrThrow(int result, string message)
-    {
-        if (result == 0) return;
-
-        var errorText = EvaluateErrorCode(result);
-        // 0x40000: Maybe the DB is optimized or PUT/GET communication is not enabled.
-        throw new S7CommunicationException($"{message} ({errorText})", result, errorText);
-    }
-
 
     protected virtual void Dispose(bool disposing)
     {
@@ -229,6 +232,19 @@ internal class Sharp7Connector : IS7Connector
             throw new InvalidOperationException("Plc is not connected");
     }
 
+    private void EnsureSuccessOrThrow(int result, string message)
+    {
+        if (result == 0) return;
+
+        var errorText = EvaluateErrorCode(result);
+        var completeMessage = $"{message}: {errorText}";
+
+        if (additionalErrorTexts.TryGetValue(result, out var additionalErrorText))
+            completeMessage += Environment.NewLine + additionalErrorText;
+
+        throw new S7CommunicationException(completeMessage, result, errorText);
+    }
+
     private string EvaluateErrorCode(int errorCode)
     {
         if (errorCode == 0)
@@ -237,7 +253,7 @@ internal class Sharp7Connector : IS7Connector
         if (sharp7 == null)
             throw new InvalidOperationException("S7 driver is not initialized.");
 
-        var errorText = $"0x{errorCode:X}: {sharp7.ErrorText(errorCode)}";
+        var errorText = $"0x{errorCode:X}, {sharp7.ErrorText(errorCode)}";
         Logger?.LogError($"S7 Error {errorText}");
 
         if (S7ErrorCodes.AssumeConnectionLost(errorCode))

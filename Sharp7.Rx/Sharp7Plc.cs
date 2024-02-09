@@ -102,15 +102,6 @@ public class Sharp7Plc : IPlc
         });
     }
 
-    private S7VariableAddress ParseAndVerify(string variableName, Type type)
-    {
-        var address = varaibleNameParser.Parse(variableName);
-        if (!address.MatchesType(type))
-            throw new DataTypeMissmatchException($"Address \"{variableName}\" does not match type {type}.", type, address);
-
-        return address;
-    }
-
     public Task<TValue> GetValue<TValue>(string variableName)
     {
         return GetValue<TValue>(variableName, CancellationToken.None);
@@ -220,6 +211,15 @@ public class Sharp7Plc : IPlc
         PrintAndResetPerformanceStatistik();
 
         return Unit.Default;
+    }
+
+    private S7VariableAddress ParseAndVerify(string variableName, Type type)
+    {
+        var address = varaibleNameParser.Parse(variableName);
+        if (!address.MatchesType(type))
+            throw new DataTypeMissmatchException($"Address \"{variableName}\" does not match type {type}.", type, address);
+
+        return address;
     }
 
     private void PrintAndResetPerformanceStatistik()
