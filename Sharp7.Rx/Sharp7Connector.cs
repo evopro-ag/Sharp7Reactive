@@ -97,8 +97,8 @@ internal class Sharp7Connector : IS7Connector
             .Select(key => new {VariableName = key, Address = variableNameParser.Parse(key)})
             .Select(x =>
             {
-                var buffer = new byte[x.Address.Length];
-                s7MultiVar.Add(S7Consts.S7AreaDB, S7Consts.S7WLByte, x.Address.DbNo, x.Address.Start, x.Address.Length, ref buffer);
+                var buffer = new byte[x.Address.BufferLength];
+                s7MultiVar.Add(S7Consts.S7AreaDB, S7Consts.S7WLByte, x.Address.DbNo, x.Address.Start, x.Address.BufferLength, ref buffer);
                 return new {x.VariableName, Buffer = buffer};
             })
             .ToArray();
