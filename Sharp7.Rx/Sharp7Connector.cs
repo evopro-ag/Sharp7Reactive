@@ -12,18 +12,6 @@ namespace Sharp7.Rx;
 
 internal class Sharp7Connector : IS7Connector
 {
-    private static readonly IReadOnlyDictionary<int, string> additionalErrorTexts = new Dictionary<int, string>
-    {
-        {0xC00000, "This happens when the DB does not exist."},
-        {0x900000, "This happens when the DB is not long enough."},
-        {
-            0x40000, """
-                     This error occurs when the DB is "optimized" or "PUT/GET communication" is not enabled.
-                     See https://snap7.sourceforge.net/snap7_client.html#target_compatibility.
-                     """
-        }
-    };
-
     private readonly BehaviorSubject<ConnectionState> connectionStateSubject = new(Enums.ConnectionState.Initial);
     private readonly int cpuSlotNr;
 
@@ -239,7 +227,8 @@ internal class Sharp7Connector : IS7Connector
         var errorText = EvaluateErrorCode(result);
         var completeMessage = $"{message}: {errorText}";
 
-        if (additionalErrorTexts.TryGetValue(result, out var additionalErrorText))
+        var additionalErrorText = S7ErrorCodes.GetAdditionalErrorText(result);
+        if (additionalErrorText != null)
             completeMessage += Environment.NewLine + additionalErrorText;
 
         throw new S7CommunicationException(completeMessage, result, errorText);

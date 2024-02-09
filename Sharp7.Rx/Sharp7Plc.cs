@@ -17,7 +17,7 @@ public class Sharp7Plc : IPlc
     private readonly ConcurrentSubjectDictionary<string, byte[]> multiVariableSubscriptions = new(StringComparer.InvariantCultureIgnoreCase);
     private readonly List<long> performanceCoutner = new(1000);
     private readonly PlcConnectionSettings plcConnectionSettings;
-    private readonly IVariableNameParser varaibleNameParser = new CacheVariableNameParser(new VariableNameParser());
+    private readonly CacheVariableNameParser varaibleNameParser = new CacheVariableNameParser(new VariableNameParser());
     private bool disposed;
     private Sharp7Connector s7Connector;
 
