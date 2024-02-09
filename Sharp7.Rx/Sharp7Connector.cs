@@ -104,11 +104,8 @@ internal class Sharp7Connector : IS7Connector
             .ToArray();
 
         var result = await Task.Factory.StartNew(() => s7MultiVar.Read(), CancellationToken.None, TaskCreationOptions.None, scheduler);
-        if (result != 0)
-        {
-            var errorText = EvaluateErrorCode(result);
-            throw new S7CommunicationException($"Error in MultiVar request for variables: {string.Join(",", variableNames)} ({errorText})", result, errorText);
-        }
+
+        EnsureSuccessOrThrow(result, $"Error in MultiVar request for variables: {string.Join(",", variableNames)}");
 
         return buffers.ToDictionary(arg => arg.VariableName, arg => arg.Buffer);
     }
@@ -150,11 +147,7 @@ internal class Sharp7Connector : IS7Connector
             await Task.Factory.StartNew(() => sharp7.ReadArea(operand.ToArea(), dbNo, startByteAddress, bytesToRead, S7WordLength.Byte, buffer), token, TaskCreationOptions.None, scheduler);
         token.ThrowIfCancellationRequested();
 
-        if (result != 0)
-        {
-            var errorText = EvaluateErrorCode(result);
-            throw new S7CommunicationException($"Error reading {operand}{dbNo}:{startByteAddress}->{bytesToRead} ({errorText})", result, errorText);
-        }
+        EnsureSuccessOrThrow(result, $"Error reading {operand}{dbNo}:{startByteAddress}->{bytesToRead}");
 
         return buffer;
     }
@@ -170,11 +163,7 @@ internal class Sharp7Connector : IS7Connector
         var result = await Task.Factory.StartNew(() => sharp7.WriteArea(operand.ToArea(), dbNo, offsetStart, 1, S7WordLength.Bit, buffer), token, TaskCreationOptions.None, scheduler);
         token.ThrowIfCancellationRequested();
 
-        if (result != 0)
-        {
-            var errorText = EvaluateErrorCode(result);
-            throw new S7CommunicationException($"Error writing {operand}{dbNo}:{startByteAddress} bit {bitAdress} ({errorText})", result, errorText);
-        }
+        EnsureSuccessOrThrow(result, $"Error writing {operand}{dbNo}:{startByteAddress} bit {bitAdress}");
     }
 
     public async Task WriteBytes(Operand operand, ushort startByteAddress, byte[] data, ushort dbNo, CancellationToken token)
@@ -184,11 +173,16 @@ internal class Sharp7Connector : IS7Connector
         var result = await Task.Factory.StartNew(() => sharp7.WriteArea(operand.ToArea(), dbNo, startByteAddress, data.Length, S7WordLength.Byte, data), token, TaskCreationOptions.None, scheduler);
         token.ThrowIfCancellationRequested();
 
-        if (result != 0)
-        {
-            var errorText = EvaluateErrorCode(result);
-            throw new S7CommunicationException($"Error writing {operand}{dbNo}:{startByteAddress}.{data.Length} ({errorText})", result, errorText);
-        }
+        EnsureSuccessOrThrow(result, $"Error writing {operand}{dbNo}:{startByteAddress}.{data.Length}");
+    }
+
+    private void EnsureSuccessOrThrow(int result, string message)
+    {
+        if (result == 0) return;
+
+        var errorText = EvaluateErrorCode(result);
+        // 0x40000: Maybe the DB is optimized or PUT/GET communication is not enabled.
+        throw new S7CommunicationException($"{message} ({errorText})", result, errorText);
     }
 
 
@@ -243,8 +237,8 @@ internal class Sharp7Connector : IS7Connector
         if (sharp7 == null)
             throw new InvalidOperationException("S7 driver is not initialized.");
 
-        var errorText = sharp7.ErrorText(errorCode);
-        Logger?.LogError($"Error Code {errorCode} {errorText}");
+        var errorText = $"0x{errorCode:X}: {sharp7.ErrorText(errorCode)}";
+        Logger?.LogError($"S7 Error {errorText}");
 
         if (S7ErrorCodes.AssumeConnectionLost(errorCode))
             SetConnectionLostState();
