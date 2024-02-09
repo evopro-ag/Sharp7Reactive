@@ -4,7 +4,7 @@ using Sharp7.Rx.Enums;
 namespace Sharp7.Rx;
 
 [NoReorder]
-internal class S7VariableAddress
+internal class VariableAddress
 {
     public Operand Operand { get; set; }
     public ushort DbNr { get; set; }

@@ -6,7 +6,7 @@ using Sharp7.Rx.Interfaces;
 
 namespace Sharp7.Rx;
 
-internal class S7VariableNameParser : IS7VariableNameParser
+internal class VariableNameParser : IVariableNameParser
 {
     private static readonly Regex regex = new(@"^(?<operand>db)(?<dbNo>\d+)\.?(?<type>[a-z]+)(?<start>\d+)(\.(?<bitOrLength>\d+))?$",
                                               RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant);
@@ -46,7 +46,7 @@ internal class S7VariableNameParser : IS7VariableNameParser
         {"x", DbType.Bit},
     };
 
-    public S7VariableAddress Parse(string input)
+    public VariableAddress Parse(string input)
     {
         if (input == null)
             throw new ArgumentNullException(nameof(input));
@@ -111,7 +111,7 @@ internal class S7VariableNameParser : IS7VariableNameParser
         byte? bit = type == DbType.Bit ? GetBit() : null;
 
 
-        var s7VariableAddress = new S7VariableAddress
+        var s7VariableAddress = new VariableAddress
         {
             Operand = operand,
             DbNr = dbNr,

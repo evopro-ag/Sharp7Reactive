@@ -2,9 +2,9 @@
 
 namespace Sharp7.Rx.Extensions;
 
-internal static class S7VariableAddressExtensions
+internal static class VariableAddressExtensions
 {
-    private static readonly Dictionary<Type, Func<S7VariableAddress, bool>> supportedTypeMap = new()
+    private static readonly Dictionary<Type, Func<VariableAddress, bool>> supportedTypeMap = new()
     {
         {typeof(bool), a => a.Type == DbType.Bit},
         {typeof(string), a => a.Type is DbType.String or DbType.WString or DbType.Byte },
@@ -20,6 +20,6 @@ internal static class S7VariableAddressExtensions
         {typeof(byte[]), a => a.Type==DbType.Byte},
     };
 
-    public static bool MatchesType(this S7VariableAddress address, Type type) =>
+    public static bool MatchesType(this VariableAddress address, Type type) =>
         supportedTypeMap.TryGetValue(type, out var map) && map(address);
 }

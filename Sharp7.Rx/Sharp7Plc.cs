@@ -17,7 +17,7 @@ public class Sharp7Plc : IPlc
     private readonly ConcurrentSubjectDictionary<string, byte[]> multiVariableSubscriptions = new(StringComparer.InvariantCultureIgnoreCase);
     private readonly List<long> performanceCoutner = new(1000);
     private readonly PlcConnectionSettings plcConnectionSettings;
-    private readonly IS7VariableNameParser varaibleNameParser = new CacheVariableNameParser(new S7VariableNameParser());
+    private readonly IVariableNameParser varaibleNameParser = new CacheVariableNameParser(new VariableNameParser());
     private bool disposed;
     private Sharp7Connector s7Connector;
 
@@ -89,7 +89,7 @@ public class Sharp7Plc : IPlc
                 Observable.FromAsync(() => GetValue<TValue>(variableName))
                     .Concat(
                         disposeableContainer.Observable
-                            .Select(bytes => S7ValueConverter.ReadFromBuffer<TValue>(bytes, address))
+                            .Select(bytes => ValueConverter.ReadFromBuffer<TValue>(bytes, address))
                     );
 
             if (transmissionMode == TransmissionMode.OnChange)
@@ -119,7 +119,7 @@ public class Sharp7Plc : IPlc
         var address = ParseAndVerify(variableName, typeof(TValue));
 
         var data = await s7Connector.ReadBytes(address.Operand, address.Start, address.BufferLength, address.DbNr, token);
-        return S7ValueConverter.ReadFromBuffer<TValue>(data, address);
+        return ValueConverter.ReadFromBuffer<TValue>(data, address);
     }
 
     public async Task<bool> InitializeAsync()
@@ -161,7 +161,7 @@ public class Sharp7Plc : IPlc
         {
             // TODO: Use ArrayPool.Rent() once we drop Framwework support
             var bytes = new byte[address.BufferLength];
-            S7ValueConverter.WriteToBuffer(bytes, value, address);
+            ValueConverter.WriteToBuffer(bytes, value, address);
 
             await s7Connector.WriteBytes(address.Operand, address.Start, bytes, address.DbNr, token);
         }
@@ -213,7 +213,7 @@ public class Sharp7Plc : IPlc
         return Unit.Default;
     }
 
-    private S7VariableAddress ParseAndVerify(string variableName, Type type)
+    private VariableAddress ParseAndVerify(string variableName, Type type)
     {
         var address = varaibleNameParser.Parse(variableName);
         if (!address.MatchesType(type))

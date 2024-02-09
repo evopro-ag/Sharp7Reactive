@@ -1,7 +1,7 @@
 ﻿using NUnit.Framework;
 using Shouldly;
 
-namespace Sharp7.Rx.Tests.S7ValueConverterTests;
+namespace Sharp7.Rx.Tests.ValueConverterTests;
 
 [TestFixture]
 internal class ConvertBothWays : ConverterTestBase

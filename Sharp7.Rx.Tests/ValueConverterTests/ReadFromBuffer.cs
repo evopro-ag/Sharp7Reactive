@@ -1,7 +1,7 @@
 ﻿using NUnit.Framework;
 using Shouldly;
 
-namespace Sharp7.Rx.Tests.S7ValueConverterTests;
+namespace Sharp7.Rx.Tests.ValueConverterTests;
 
 [TestFixture]
 internal class ReadFromBuffer : ConverterTestBase
@@ -34,7 +34,7 @@ internal class ReadFromBuffer : ConverterTestBase
         var variableAddress = Parser.Parse(address);
 
         //Act
-        Should.Throw<UnsupportedS7TypeException>(() => S7ValueConverter.ReadFromBuffer<T>(data, variableAddress));
+        Should.Throw<UnsupportedS7TypeException>(() => ValueConverter.ReadFromBuffer<T>(data, variableAddress));
     }
 
     [TestCase(123, "DB12.DINT3", new byte[] {0x01, 0x02, 0x03})]
@@ -46,6 +46,6 @@ internal class ReadFromBuffer : ConverterTestBase
         var variableAddress = Parser.Parse(address);
 
         //Act
-        Should.Throw<ArgumentException>(() => S7ValueConverter.ReadFromBuffer<T>(data, variableAddress));
+        Should.Throw<ArgumentException>(() => ValueConverter.ReadFromBuffer<T>(data, variableAddress));
     }
 }

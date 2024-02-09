@@ -32,13 +32,13 @@ internal class Sharp7Connector : IS7Connector
     private readonly int port;
     private readonly int rackNr;
     private readonly LimitedConcurrencyLevelTaskScheduler scheduler = new(maxDegreeOfParallelism: 1);
-    private readonly IS7VariableNameParser variableNameParser;
+    private readonly IVariableNameParser variableNameParser;
     private bool disposed;
 
     private S7Client sharp7;
 
 
-    public Sharp7Connector(PlcConnectionSettings settings, IS7VariableNameParser variableNameParser)
+    public Sharp7Connector(PlcConnectionSettings settings, IVariableNameParser variableNameParser)
     {
         this.variableNameParser = variableNameParser;
         ipAddress = settings.IpAddress;

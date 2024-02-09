@@ -5,7 +5,7 @@ using Sharp7.Rx.Enums;
 
 namespace Sharp7.Rx;
 
-internal static class S7ValueConverter
+internal static class ValueConverter
 {
     private static readonly Dictionary<Type, WriteFunc> writeFunctions = new()
     {
@@ -175,7 +175,7 @@ internal static class S7ValueConverter
         },
     };
 
-    public static TValue ReadFromBuffer<TValue>(byte[] buffer, S7VariableAddress address)
+    public static TValue ReadFromBuffer<TValue>(byte[] buffer, VariableAddress address)
     {
         // Todo: Change to Span<byte> when switched to newer .net
 
@@ -191,7 +191,7 @@ internal static class S7ValueConverter
         return (TValue) result;
     }
 
-    public static void WriteToBuffer<TValue>(Span<byte> buffer, TValue value, S7VariableAddress address)
+    public static void WriteToBuffer<TValue>(Span<byte> buffer, TValue value, VariableAddress address)
     {
         if (buffer.Length < address.BufferLength)
             throw new ArgumentException($"Buffer must be at least {address.BufferLength} bytes long for {address}", nameof(buffer));
@@ -204,7 +204,7 @@ internal static class S7ValueConverter
         writeFunc(buffer, address, value);
     }
 
-    delegate object ReadFunc(byte[] data, S7VariableAddress address);
+    delegate object ReadFunc(byte[] data, VariableAddress address);
 
     [StructLayout(LayoutKind.Explicit)]
     private struct UInt32SingleMap
@@ -220,5 +220,5 @@ internal static class S7ValueConverter
         [FieldOffset(0)] public double Double;
     }
 
-    delegate void WriteFunc(Span<byte> data, S7VariableAddress address, object value);
+    delegate void WriteFunc(Span<byte> data, VariableAddress address, object value);
 }

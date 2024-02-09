@@ -1,7 +1,7 @@
 ﻿using NUnit.Framework;
 using Shouldly;
 
-namespace Sharp7.Rx.Tests.S7ValueConverterTests;
+namespace Sharp7.Rx.Tests.ValueConverterTests;
 
 [TestFixture]
 internal class WriteToBuffer : ConverterTestBase
@@ -37,7 +37,7 @@ internal class WriteToBuffer : ConverterTestBase
         var buffer = new byte[bufferSize];
 
         //Act
-        Should.Throw<ArgumentException>(() => S7ValueConverter.WriteToBuffer(buffer, input, variableAddress));
+        Should.Throw<ArgumentException>(() => ValueConverter.WriteToBuffer(buffer, input, variableAddress));
     }
 
     [TestCase((char) 18, "DB0.DBB0")]
@@ -48,6 +48,6 @@ internal class WriteToBuffer : ConverterTestBase
         var buffer = new byte[variableAddress.BufferLength];
 
         //Act
-        Should.Throw<UnsupportedS7TypeException>(() => S7ValueConverter.WriteToBuffer(buffer, input, variableAddress));
+        Should.Throw<UnsupportedS7TypeException>(() => ValueConverter.WriteToBuffer(buffer, input, variableAddress));
     }
 }

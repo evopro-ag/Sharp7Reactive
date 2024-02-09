@@ -1,15 +1,15 @@
 ﻿using System.Reflection;
 using Sharp7.Rx.Interfaces;
 
-namespace Sharp7.Rx.Tests.S7ValueConverterTests;
+namespace Sharp7.Rx.Tests.ValueConverterTests;
 
 internal abstract class ConverterTestBase
 {
-    protected static readonly IS7VariableNameParser Parser = new S7VariableNameParser();
+    protected static readonly IVariableNameParser Parser = new VariableNameParser();
 
     public static MethodInfo CreateReadMethod(ConverterTestCase tc)
     {
-        var convertMi = typeof(S7ValueConverter).GetMethod(nameof(S7ValueConverter.ReadFromBuffer));
+        var convertMi = typeof(ValueConverter).GetMethod(nameof(ValueConverter.ReadFromBuffer));
         var convert = convertMi!.MakeGenericMethod(tc.Value.GetType());
         return convert;
     }
@@ -69,14 +69,14 @@ internal abstract class ConverterTestBase
     ///     This helper method exists, since I could not manage to invoke a generic method
     ///     accepring a Span&lt;T&gt; as parameter.
     /// </summary>
-    public static void WriteToBuffer<TValue>(byte[] buffer, TValue value, S7VariableAddress address)
+    public static void WriteToBuffer<TValue>(byte[] buffer, TValue value, VariableAddress address)
     {
-        S7ValueConverter.WriteToBuffer(buffer, value, address);
+        ValueConverter.WriteToBuffer(buffer, value, address);
     }
 
     public record ConverterTestCase(object Value, string Address, byte[] Data)
     {
-        public S7VariableAddress VariableAddress => Parser.Parse(Address);
+        public VariableAddress VariableAddress => Parser.Parse(Address);
 
         public override string ToString() => $"{Value.GetType().Name}, {Address}: {Value}";
     }

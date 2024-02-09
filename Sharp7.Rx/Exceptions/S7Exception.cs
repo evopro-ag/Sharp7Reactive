@@ -31,13 +31,13 @@ public class S7CommunicationException : S7Exception
 
 public class DataTypeMissmatchException : S7Exception
 {
-    internal DataTypeMissmatchException(string message, Type type, S7VariableAddress address) : base(message)
+    internal DataTypeMissmatchException(string message, Type type, VariableAddress address) : base(message)
     {
         Type = type;
         Address = address.ToString();
     }
 
-    internal DataTypeMissmatchException(string message, Exception innerException, Type type, S7VariableAddress address) : base(message, innerException)
+    internal DataTypeMissmatchException(string message, Exception innerException, Type type, VariableAddress address) : base(message, innerException)
     {
         Type = type;
         Address = address.ToString();
@@ -50,13 +50,13 @@ public class DataTypeMissmatchException : S7Exception
 
 public class UnsupportedS7TypeException : S7Exception
 {
-    internal UnsupportedS7TypeException(string message, Type type, S7VariableAddress address) : base(message)
+    internal UnsupportedS7TypeException(string message, Type type, VariableAddress address) : base(message)
     {
         Type = type;
         Address = address.ToString();
     }
 
-    internal UnsupportedS7TypeException(string message, Exception innerException, Type type, S7VariableAddress address) : base(message, innerException)
+    internal UnsupportedS7TypeException(string message, Exception innerException, Type type, VariableAddress address) : base(message, innerException)
     {
         Type = type;
         Address = address.ToString();
