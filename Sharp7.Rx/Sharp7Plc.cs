@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System.Buffers;
+using System.Diagnostics;
 using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
@@ -20,6 +21,7 @@ public class Sharp7Plc : IPlc
     private readonly CacheVariableNameParser variableNameParser = new CacheVariableNameParser(new VariableNameParser());
     private bool disposed;
     private Sharp7Connector s7Connector;
+    private static readonly ArrayPool<byte> arrayPool = ArrayPool<byte>.Shared;
 
 
     /// <summary>
@@ -159,11 +161,17 @@ public class Sharp7Plc : IPlc
         }
         else
         {
-            // TODO: Use ArrayPool.Rent() once we drop Framwework support
-            var bytes = new byte[address.BufferLength];
-            ValueConverter.WriteToBuffer(bytes, value, address);
+            var buffer = arrayPool.Rent(address.BufferLength);
+            try
+            {
+                ValueConverter.WriteToBuffer(buffer, value, address);
 
-            await s7Connector.WriteBytes(address.Operand, address.Start, bytes, address.DbNo, token);
+                await s7Connector.WriteBytes(address.Operand, address.Start, buffer, address.DbNo, token);
+            }
+            finally
+            {
+                ArrayPool<Byte>.Shared.Return(buffer);                
+            }
         }
     }
 
