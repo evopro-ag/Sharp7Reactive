@@ -42,7 +42,7 @@ internal class VariableNameParserTests
     public void Invalid(string? input)
     {
         var parser = new VariableNameParser();
-        Should.Throw<InvalidS7AddressException>(() => parser.Parse(input));
+        Should.Throw<InvalidS7AddressException>(() => parser.Parse(input!));
     }
 
     public static IEnumerable<TestCase> ValidTestCases()

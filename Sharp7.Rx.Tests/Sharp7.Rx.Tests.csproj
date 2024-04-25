@@ -6,6 +6,12 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AnalysisLevel>latest-Recommended</AnalysisLevel>
+
+    <!--
+       CA1859: Change type of field 'xxx' from interface to type for performance reasons
+       CA1852: Type 'ReadFromBuffer' can be sealed
+    -->
+    <NoWarn>$(NoWarn);CA1859;CA1852</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
