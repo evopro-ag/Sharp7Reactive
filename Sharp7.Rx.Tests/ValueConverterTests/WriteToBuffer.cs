@@ -25,6 +25,10 @@ internal class WriteToBuffer : ConverterTestBase
     {
         yield return new ConverterTestCase("aaaaBCDE", "DB0.string0.4", [0x04, 0x04, 0x61, 0x61, 0x61, 0x61]); // Length in address exceeds PLC string length
         yield return new ConverterTestCase("aaaaBCDE", "DB0.WString0.4", [0x00, 0x04, 0x00, 0x04, 0x00, 0x61, 0x00, 0x61, 0x00, 0x61, 0x00, 0x61]); // Length in address exceeds PLC string length
+        yield return new ConverterTestCase("aaaaBCDE", "DB0.DBB0.4", [0x61, 0x61, 0x61, 0x61]); // Length in address exceeds PLC array length
+        yield return new ConverterTestCase("\ud83d\udc69\ud83c\udffd\u200d\ud83d\ude80", "DB0.WString0.2", [0x00, 0x02, 0x00, 0x02, 0xD8, 0x3D, 0xDC, 0x69]); // Length in address exceeds PLC string length, multi char unicode point
+        yield return new ConverterTestCase("\ud83d\udc69\ud83c\udffd\u200d\ud83d\ude80", "DB0.String0.2", [0x02, 0x02, 0x3F, 0x3F]); // Length in address exceeds PLC string length, multi char unicode point
+        yield return new ConverterTestCase("\ud83d\udc69\ud83c\udffd\u200d\ud83d\ude80", "DB0.DBB0.4", [0x3F, 0x3F, 0x3F, 0x3F]); // Length in address exceeds PLC string length, multi char unicode point
     }
 
     [TestCase(18, "DB0.DInt12", 3)]

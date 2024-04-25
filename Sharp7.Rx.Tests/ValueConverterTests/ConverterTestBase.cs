@@ -49,6 +49,8 @@ internal abstract class ConverterTestBase
         yield return new ConverterTestCase("ABCD", "DB99.WString10.4", [0x00, 0x04, 0x00, 0x04, 0x00, 0x41, 0x00, 0x42, 0x00, 0x43, 0x00, 0x44]);
         yield return new ConverterTestCase("ABCD", "DB99.WString10.6", [0x00, 0x06, 0x00, 0x04, 0x00, 0x41, 0x00, 0x42, 0x00, 0x43, 0x00, 0x44, 0x00, 0x00, 0x00, 0x00]);
         yield return new ConverterTestCase("ABCD", "DB99.Byte5.4", [0x41, 0x42, 0x43, 0x44]);
+        yield return new ConverterTestCase("A\ud83d\udc69\ud83c\udffd\u200d\ud83d\ude80A", "DB99.WString10.10",
+                                           [0x0, 0xA, 0x0, 0x9, 0x0, 0x41, 0xD8, 0x3D, 0xDC, 0x69, 0xD8, 0x3C, 0xDF, 0xFD, 0x20, 0xD, 0xD8, 0x3D, 0xDE, 0x80, 0x0, 0x41, 0x0, 0x0]);
 
         yield return new ConverterTestCase(true, "DB99.DBx0.0", [0x01]);
         yield return new ConverterTestCase(false, "DB99.DBx0.0", [0x00]);
@@ -69,15 +71,15 @@ internal abstract class ConverterTestBase
     ///     This helper method exists, since I could not manage to invoke a generic method
     ///     with a Span&lt;T&gt; parameter.
     /// </summary>
-    public static void WriteToBuffer<TValue>(byte[] buffer, TValue value, VariableAddress address) =>
-        ValueConverter.WriteToBuffer(buffer, value, address);
+    public static TValue ReadFromBuffer<TValue>(byte[] buffer, VariableAddress address) =>
+        ValueConverter.ReadFromBuffer<TValue>(buffer, address);
 
     /// <summary>
     ///     This helper method exists, since I could not manage to invoke a generic method
     ///     with a Span&lt;T&gt; parameter.
     /// </summary>
-    public static TValue ReadFromBuffer<TValue>(byte[] buffer, VariableAddress address) =>
-        ValueConverter.ReadFromBuffer<TValue>(buffer, address);
+    public static void WriteToBuffer<TValue>(byte[] buffer, TValue value, VariableAddress address) =>
+        ValueConverter.WriteToBuffer(buffer, value, address);
 
     public record ConverterTestCase(object Value, string Address, byte[] Data)
     {

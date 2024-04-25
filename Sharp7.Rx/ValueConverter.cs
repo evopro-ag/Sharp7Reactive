@@ -1,5 +1,4 @@
 ﻿using System.Buffers.Binary;
-using System.Runtime.InteropServices;
 using System.Text;
 using Sharp7.Rx.Enums;
 
@@ -18,7 +17,7 @@ internal static class ValueConverter
             }
         },
 
-        {typeof(byte), (data, address, value) => data[0] = (byte) value},
+        {typeof(byte), (data, _, value) => data[0] = (byte) value},
         {
             typeof(byte[]), (data, address, value) =>
             {
@@ -30,71 +29,57 @@ internal static class ValueConverter
             }
         },
 
-        {typeof(short), (data, address, value) => BinaryPrimitives.WriteInt16BigEndian(data, (short) value)},
-        {typeof(ushort), (data, address, value) => BinaryPrimitives.WriteUInt16BigEndian(data, (ushort) value)},
-        {typeof(int), (data, address, value) => BinaryPrimitives.WriteInt32BigEndian(data, (int) value)},
-        {typeof(uint), (data, address, value) => BinaryPrimitives.WriteUInt32BigEndian(data, (uint) value)},
-        {typeof(long), (data, address, value) => BinaryPrimitives.WriteInt64BigEndian(data, (long) value)},
-        {typeof(ulong), (data, address, value) => BinaryPrimitives.WriteUInt64BigEndian(data, (ulong) value)},
+        {typeof(short), (data, _, value) => BinaryPrimitives.WriteInt16BigEndian(data, (short) value)},
+        {typeof(ushort), (data, _, value) => BinaryPrimitives.WriteUInt16BigEndian(data, (ushort) value)},
+        {typeof(int), (data, _, value) => BinaryPrimitives.WriteInt32BigEndian(data, (int) value)},
+        {typeof(uint), (data, _, value) => BinaryPrimitives.WriteUInt32BigEndian(data, (uint) value)},
+        {typeof(long), (data, _, value) => BinaryPrimitives.WriteInt64BigEndian(data, (long) value)},
+        {typeof(ulong), (data, _, value) => BinaryPrimitives.WriteUInt64BigEndian(data, (ulong) value)},
 
-        {
-            typeof(float), (data, address, value) =>
-            {
-                var map = new UInt32SingleMap
-                {
-                    Single = (float) value
-                };
-
-                BinaryPrimitives.WriteUInt32BigEndian(data, map.UInt32);
-            }
-        },
-        {
-            typeof(double), (data, address, value) =>
-            {
-                var map = new UInt64DoubleMap
-                {
-                    Double = (double) value
-                };
-
-                BinaryPrimitives.WriteUInt64BigEndian(data, map.UInt64);
-            }
-        },
+        {typeof(float), (data, _, value) => BinaryPrimitives.WriteSingleBigEndian(data, (float) value)},
+        {typeof(double), (data, _, value) => BinaryPrimitives.WriteDoubleBigEndian(data, (double) value)},
 
         {
             typeof(string), (data, address, value) =>
             {
                 if (value is not string stringValue) throw new ArgumentException("Value must be of type string", nameof(value));
 
-                var length = Math.Min(address.Length, stringValue.Length);
 
                 switch (address.Type)
                 {
                     case DbType.String:
-                        data[0] = (byte) address.Length;
-                        data[1] = (byte) length;
-
-                        // Todo: Serialize directly to Span, when upgrading to .net
-                        Encoding.ASCII.GetBytes(stringValue)
-                            .AsSpan(0, length)
-                            .CopyTo(data.Slice(2));
+                        EncodeString(data);
                         return;
                     case DbType.WString:
-                        BinaryPrimitives.WriteUInt16BigEndian(data, address.Length);
-                        BinaryPrimitives.WriteUInt16BigEndian(data.Slice(2), (ushort) length);
-
-                        // Todo: Serialize directly to Span, when upgrading to .net
-                        Encoding.BigEndianUnicode.GetBytes(stringValue)
-                            .AsSpan(0, length * 2)
-                            .CopyTo(data.Slice(4));
+                        EncodeWString(data);
                         return;
                     case DbType.Byte:
-                        // Todo: Serialize directly to Span, when upgrading to .net
-                        Encoding.ASCII.GetBytes(stringValue)
-                            .AsSpan(0, length)
-                            .CopyTo(data);
+                        Encoding.ASCII.GetBytes(stringValue.AsSpan(0, address.Length), data);
                         return;
                     default:
                         throw new DataTypeMissmatchException($"Cannot write string to {address.Type}", typeof(string), address);
+                }
+
+                void EncodeString(Span<byte> span)
+                {
+                    var encodedLength = Encoding.ASCII.GetByteCount(stringValue);
+                    var length = Math.Min(address.Length, encodedLength);
+
+                    span[0] = (byte) address.Length;
+                    span[1] = (byte) length;
+
+                    Encoding.ASCII.GetBytes(stringValue.AsSpan(0, length), span[2..]);
+                }
+
+                void EncodeWString(Span<byte> span)
+                {
+                    var length = Math.Min(address.Length, stringValue.Length);
+
+                    BinaryPrimitives.WriteUInt16BigEndian(span, address.Length);
+                    BinaryPrimitives.WriteUInt16BigEndian(span[2..], (ushort) length);
+
+                    var readOnlySpan = stringValue.AsSpan(0, length);
+                    Encoding.BigEndianUnicode.GetBytes(readOnlySpan, span[4..]);
                 }
             }
         }
@@ -104,39 +89,17 @@ internal static class ValueConverter
     {
         {typeof(bool), (buffer, address) => (buffer[0] >> address.Bit & 1) > 0},
 
-        {typeof(byte), (buffer, address) => buffer[0]},
-        {typeof(byte[]), (buffer, address) => buffer.ToArray()},
+        {typeof(byte), (buffer, _) => buffer[0]},
+        {typeof(byte[]), (buffer, _) => buffer.ToArray()},
 
-        {typeof(short), (buffer, address) => BinaryPrimitives.ReadInt16BigEndian(buffer)},
-        {typeof(ushort), (buffer, address) => BinaryPrimitives.ReadUInt16BigEndian(buffer)},
-        {typeof(int), (buffer, address) => BinaryPrimitives.ReadInt32BigEndian(buffer)},
-        {typeof(uint), (buffer, address) => BinaryPrimitives.ReadUInt32BigEndian(buffer)},
-        {typeof(long), (buffer, address) => BinaryPrimitives.ReadInt64BigEndian(buffer)},
-        {typeof(ulong), (buffer, address) => BinaryPrimitives.ReadUInt64BigEndian(buffer)},
-
-        {
-            typeof(float), (buffer, address) =>
-            {
-                // Todo: Use BinaryPrimitives when switched to newer .net
-                var d = new UInt32SingleMap
-                {
-                    UInt32 = BinaryPrimitives.ReadUInt32BigEndian(buffer)
-                };
-                return d.Single;
-            }
-        },
-
-        {
-            typeof(double), (buffer, address) =>
-            {
-                // Todo: Use BinaryPrimitives when switched to newer .net
-                var d = new UInt64DoubleMap
-                {
-                    UInt64 = BinaryPrimitives.ReadUInt64BigEndian(buffer)
-                };
-                return d.Double;
-            }
-        },
+        {typeof(short), (buffer, _) => BinaryPrimitives.ReadInt16BigEndian(buffer)},
+        {typeof(ushort), (buffer, _) => BinaryPrimitives.ReadUInt16BigEndian(buffer)},
+        {typeof(int), (buffer, _) => BinaryPrimitives.ReadInt32BigEndian(buffer)},
+        {typeof(uint), (buffer, _) => BinaryPrimitives.ReadUInt32BigEndian(buffer)},
+        {typeof(long), (buffer, _) => BinaryPrimitives.ReadInt64BigEndian(buffer)},
+        {typeof(ulong), (buffer, _) => BinaryPrimitives.ReadUInt64BigEndian(buffer)},
+        {typeof(float), (buffer, _) => BinaryPrimitives.ReadSingleBigEndian(buffer)},
+        {typeof(double), (buffer, _) => BinaryPrimitives.ReadDoubleBigEndian(buffer)},
 
         {
             typeof(string), (buffer, address) =>
@@ -202,21 +165,7 @@ internal static class ValueConverter
         writeFunc(buffer, address, value);
     }
 
-    delegate object ReadFunc(Span<byte> data, VariableAddress address);
+    private delegate object ReadFunc(Span<byte> data, VariableAddress address);
 
-    [StructLayout(LayoutKind.Explicit)]
-    private struct UInt32SingleMap
-    {
-        [FieldOffset(0)] public uint UInt32;
-        [FieldOffset(0)] public float Single;
-    }
-
-    [StructLayout(LayoutKind.Explicit)]
-    private struct UInt64DoubleMap
-    {
-        [FieldOffset(0)] public ulong UInt64;
-        [FieldOffset(0)] public double Double;
-    }
-
-    delegate void WriteFunc(Span<byte> data, VariableAddress address, object value);
+    private delegate void WriteFunc(Span<byte> data, VariableAddress address, object value);
 }
