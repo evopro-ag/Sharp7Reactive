@@ -54,7 +54,9 @@ internal static class ValueConverter
                         EncodeWString(data);
                         return;
                     case DbType.Byte:
-                        Encoding.ASCII.GetBytes(stringValue.AsSpan(0, address.Length), data);
+
+                        var readOnlySpan = stringValue.AsSpan(0, Math.Min(address.Length, stringValue.Length));
+                        Encoding.ASCII.GetBytes(readOnlySpan, data);
                         return;
                     default:
                         throw new DataTypeMissmatchException($"Cannot write string to {address.Type}", typeof(string), address);
