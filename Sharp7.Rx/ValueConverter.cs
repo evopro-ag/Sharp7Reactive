@@ -132,7 +132,8 @@ internal static class ValueConverter
                     // https://support.industry.siemens.com/cs/mdm/109747174?c=94063855243&lc=de-DE
 
                     // the length of the string is two bytes per character
-                    var length = Math.Min(address.Length, BinaryPrimitives.ReadUInt16BigEndian(data.Slice(2, 2))) * 2;
+                    var statedStringLength = BinaryPrimitives.ReadUInt16BigEndian(data.Slice(2, 2));
+                    var length = Math.Min(address.Length, statedStringLength) * 2;
 
                     return Encoding.BigEndianUnicode.GetString(data.Slice(4, length));
                 }
