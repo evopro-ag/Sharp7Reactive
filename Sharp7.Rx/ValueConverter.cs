@@ -143,42 +143,40 @@ internal static class ValueConverter
             {
                 return address.Type switch
                 {
-                    DbType.String => ParseString(),
-                    DbType.WString => ParseWString(),
-                    DbType.Byte => Encoding.ASCII.GetString(buffer.ToArray()),
+                    DbType.String => ParseString(buffer),
+                    DbType.WString => ParseWString(buffer),
+                    DbType.Byte => Encoding.ASCII.GetString(buffer),
                     _ => throw new DataTypeMissmatchException($"Cannot read string from {address.Type}", typeof(string), address)
                 };
 
-                string ParseString()
+                string ParseString(Span<byte> data)
                 {
                     // First byte is maximal length
                     // Second byte is actual length
                     // https://support.industry.siemens.com/cs/mdm/109747174?c=94063831435&lc=de-DE
 
-                    var length = Math.Min(address.Length, buffer[1]);
+                    var length = Math.Min(address.Length, data[1]);
 
-                    return Encoding.ASCII.GetString(buffer, 2, length);
+                    return Encoding.ASCII.GetString(data.Slice(2, length));
                 }
 
-                string ParseWString()
+                string ParseWString(Span<byte> data)
                 {
                     // First 2 bytes are maximal length
                     // Second 2 bytes are actual length
                     // https://support.industry.siemens.com/cs/mdm/109747174?c=94063855243&lc=de-DE
 
-                    // the length of the string is two bytes per 
-                    var length = Math.Min(address.Length, BinaryPrimitives.ReadUInt16BigEndian(buffer.AsSpan(2, 2))) * 2;
+                    // the length of the string is two bytes per character
+                    var length = Math.Min(address.Length, BinaryPrimitives.ReadUInt16BigEndian(data.Slice(2, 2))) * 2;
 
-                    return Encoding.BigEndianUnicode.GetString(buffer, 4, length);
+                    return Encoding.BigEndianUnicode.GetString(data.Slice(4, length));
                 }
             }
         },
     };
 
-    public static TValue ReadFromBuffer<TValue>(byte[] buffer, VariableAddress address)
+    public static TValue ReadFromBuffer<TValue>(Span<byte> buffer, VariableAddress address)
     {
-        // Todo: Change to Span<byte> when switched to newer .net
-
         if (buffer.Length < address.BufferLength)
             throw new ArgumentException($"Buffer must be at least {address.BufferLength} bytes long for {address}", nameof(buffer));
 
@@ -204,7 +202,7 @@ internal static class ValueConverter
         writeFunc(buffer, address, value);
     }
 
-    delegate object ReadFunc(byte[] data, VariableAddress address);
+    delegate object ReadFunc(Span<byte> data, VariableAddress address);
 
     [StructLayout(LayoutKind.Explicit)]
     private struct UInt32SingleMap

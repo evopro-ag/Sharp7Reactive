@@ -9,7 +9,7 @@ internal abstract class ConverterTestBase
 
     public static MethodInfo CreateReadMethod(ConverterTestCase tc)
     {
-        var convertMi = typeof(ValueConverter).GetMethod(nameof(ValueConverter.ReadFromBuffer));
+        var convertMi = typeof(ConverterTestBase).GetMethod(nameof(ReadFromBuffer));
         var convert = convertMi!.MakeGenericMethod(tc.Value.GetType());
         return convert;
     }
@@ -67,12 +67,17 @@ internal abstract class ConverterTestBase
 
     /// <summary>
     ///     This helper method exists, since I could not manage to invoke a generic method
-    ///     accepring a Span&lt;T&gt; as parameter.
+    ///     with a Span&lt;T&gt; parameter.
     /// </summary>
-    public static void WriteToBuffer<TValue>(byte[] buffer, TValue value, VariableAddress address)
-    {
+    public static void WriteToBuffer<TValue>(byte[] buffer, TValue value, VariableAddress address) =>
         ValueConverter.WriteToBuffer(buffer, value, address);
-    }
+
+    /// <summary>
+    ///     This helper method exists, since I could not manage to invoke a generic method
+    ///     with a Span&lt;T&gt; parameter.
+    /// </summary>
+    public static TValue ReadFromBuffer<TValue>(byte[] buffer, VariableAddress address) =>
+        ValueConverter.ReadFromBuffer<TValue>(buffer, address);
 
     public record ConverterTestCase(object Value, string Address, byte[] Data)
     {
