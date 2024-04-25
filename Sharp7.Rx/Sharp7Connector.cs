@@ -98,7 +98,9 @@ internal class Sharp7Connector : IS7Connector
             .Select(x =>
             {
                 var buffer = new byte[x.Address.BufferLength];
+#pragma warning disable CS0618 // Type or member is obsolete, no matching overload.
                 s7MultiVar.Add(S7Consts.S7AreaDB, S7Consts.S7WLByte, x.Address.DbNo, x.Address.Start, x.Address.BufferLength, ref buffer);
+#pragma warning restore CS0618
                 return new {x.VariableName, Buffer = buffer};
             })
             .ToArray();

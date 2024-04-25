@@ -48,8 +48,7 @@ internal class VariableNameParser : IVariableNameParser
 
     public VariableAddress Parse(string input)
     {
-        if (input == null)
-            throw new ArgumentNullException(nameof(input));
+        ArgumentNullException.ThrowIfNull(input);
 
         var match = regex.Match(input);
         if (!match.Success)

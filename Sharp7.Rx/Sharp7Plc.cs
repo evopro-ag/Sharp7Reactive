@@ -230,8 +230,9 @@ public class Sharp7Plc : IPlc
             var min = performanceCounter.Min();
             var max = performanceCounter.Max();
 
-            Logger?.LogTrace("Performance statistic during {0} elements of plc notification. Min: {1}, Max: {2}, Average: {3}, Plc: '{4}', Number of variables: {5}, Batch size: {6}",
-                             performanceCounter.Capacity, min, max, average, plcConnectionSettings.IpAddress,
+            Logger?.LogTrace("PLC {Plc} notification perf: {Elements} calls, min {Min}, max {Max}, avg {Avg}, variables {Vars}, batch size {BatchSize}",
+                             plcConnectionSettings.IpAddress,
+                             performanceCounter.Capacity, min, max, average, 
                              multiVariableSubscriptions.ExistingKeys.Count(),
                              MultiVarRequestMaxItems);
             performanceCounter.Clear();
