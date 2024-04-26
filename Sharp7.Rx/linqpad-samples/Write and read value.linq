@@ -16,10 +16,7 @@ var cpuMpiAddress = 0;
 
 using var plc = new Sharp7Plc(ip, rackNumber, cpuMpiAddress);
 
-await plc.InitializeAsync();
-await plc.ConnectionState
-	.FirstAsync(c => c == Sharp7.Rx.Enums.ConnectionState.Connected)
-	.ToTask();
+await plc.InitializeConnection();
 
 "Connection established".Dump();
 

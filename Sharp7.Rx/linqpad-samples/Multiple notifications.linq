@@ -18,10 +18,7 @@ using var plc = new Sharp7Plc(ip, rackNumber, cpuMpiAddress);
 
 plc.ConnectionState.Dump();
 
-await plc.InitializeAsync();
-await plc.ConnectionState
-	.FirstAsync(c => c == Sharp7.Rx.Enums.ConnectionState.Connected)
-	.ToTask();
+await plc.InitializeConnection();
 
 // create an IObservable
 plc.CreateNotification<short>($"DB{db}.Int6", Sharp7.Rx.Enums.TransmissionMode.OnChange).Dump("Int 6");
