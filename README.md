@@ -24,13 +24,8 @@ using (var disposables = new CompositeDisposable())
     var plc = new Sharp7Plc("10.30.3.10", 0, 2);
     disposables.Add(plc);
     
-    // initialize the plc
-    await plc.InitializeAsync();
-    
-    //wait for the plc to get connected
-    await plc.ConnectionState
-             .FirstAsync(c => c == Sharp7.Rx.Enums.ConnectionState.Connected)
-             .ToTask();
+    // initialize and connect to the plc
+    await plc.InitializeConnection();
     
     await plc.SetValue<bool>("DB2.DBX0.4", true); // set a bit
     var bit = await plc.GetValue<int>("DB2.int4"); // get a bit
