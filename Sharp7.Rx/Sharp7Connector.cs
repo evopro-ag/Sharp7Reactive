@@ -10,7 +10,7 @@ using Sharp7.Rx.Settings;
 
 namespace Sharp7.Rx;
 
-internal class Sharp7Connector : IS7Connector
+internal class Sharp7Connector: IDisposable
 {
     private readonly BehaviorSubject<ConnectionState> connectionStateSubject = new(Enums.ConnectionState.Initial);
     private readonly int cpuSlotNr;
