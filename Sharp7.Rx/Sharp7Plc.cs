@@ -3,6 +3,8 @@ using System.Diagnostics;
 using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
+using System.Reactive.Threading.Tasks;
+using System.Reflection;
 using Microsoft.Extensions.Logging;
 using Sharp7.Rx.Basics;
 using Sharp7.Rx.Enums;
@@ -14,6 +16,11 @@ namespace Sharp7.Rx;
 
 public class Sharp7Plc : IPlc
 {
+    private static readonly ArrayPool<byte> arrayPool = ArrayPool<byte>.Shared;
+
+    private static readonly MethodInfo getValueMethod = typeof(Sharp7Plc).GetMethods()
+        .Single(m => m.Name == nameof(GetValue) && m.GetGenericArguments().Length == 1);
+
     private readonly CompositeDisposable disposables = new();
     private readonly ConcurrentSubjectDictionary<string, byte[]> multiVariableSubscriptions = new(StringComparer.InvariantCultureIgnoreCase);
     private readonly List<long> performanceCounter = new(1000);
@@ -21,8 +28,6 @@ public class Sharp7Plc : IPlc
     private readonly CacheVariableNameParser variableNameParser = new CacheVariableNameParser(new VariableNameParser());
     private bool disposed;
     private Sharp7Connector s7Connector;
-    private static readonly ArrayPool<byte> arrayPool = ArrayPool<byte>.Shared;
-
 
     /// <summary>
     /// </summary>
@@ -75,6 +80,14 @@ public class Sharp7Plc : IPlc
         GC.SuppressFinalize(this);
     }
 
+    /// <summary>
+    ///     Create an Observable for a given variable. Multiple notifications are automatically combined into a multi-variable subscription to
+    ///     reduce network trafic and PLC workload.
+    /// </summary>
+    /// <typeparam name="TValue"></typeparam>
+    /// <param name="variableName"></param>
+    /// <param name="transmissionMode"></param>
+    /// <returns></returns>
     public IObservable<TValue> CreateNotification<TValue>(string variableName, TransmissionMode transmissionMode)
     {
         return Observable.Create<TValue>(observer =>
@@ -104,19 +117,14 @@ public class Sharp7Plc : IPlc
         });
     }
 
-    public Task<TValue> GetValue<TValue>(string variableName)
-    {
-        return GetValue<TValue>(variableName, CancellationToken.None);
-    }
-
-
-    public Task SetValue<TValue>(string variableName, TValue value)
-    {
-        return SetValue(variableName, value, CancellationToken.None);
-    }
-
-
-    public async Task<TValue> GetValue<TValue>(string variableName, CancellationToken token)
+    /// <summary>
+    ///     Read PLC variable as generic variable.
+    /// </summary>
+    /// <typeparam name="TValue"></typeparam>
+    /// <param name="variableName"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    public async Task<TValue> GetValue<TValue>(string variableName, CancellationToken token = default)
     {
         var address = ParseAndVerify(variableName, typeof(TValue));
 
@@ -124,31 +132,38 @@ public class Sharp7Plc : IPlc
         return ValueConverter.ReadFromBuffer<TValue>(data, address);
     }
 
-    public async Task<bool> InitializeAsync()
+    /// <summary>
+    ///     Read PLC variable as object.
+    /// </summary>
+    /// <param name="variableName"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    public async Task<object> GetValue(string variableName, CancellationToken token = default)
     {
-        await s7Connector.InitializeAsync();
+        var address = variableNameParser.Parse(variableName);
+        var clrType = address.GetClrType();
 
-#pragma warning disable 4014
-        Task.Run(async () =>
-        {
-            try
-            {
-                await s7Connector.Connect();
-            }
-            catch (Exception e)
-            {
-                Logger?.LogError(e, "Error while connecting to PLC");
-            }
-        });
-#pragma warning restore 4014
+        var genericGetValue = getValueMethod!.MakeGenericMethod(clrType);
 
-        RunNotifications(s7Connector, MultiVarRequestCycleTime)
-            .AddDisposableTo(disposables);
+        var task = genericGetValue.Invoke(this, [variableName, token]) as Task;
 
-        return true;
+        await task!;
+        var taskType = typeof(Task<>).MakeGenericType(clrType);
+        var propertyInfo = taskType.GetProperty(nameof(Task<object>.Result));
+        var result = propertyInfo!.GetValue(task);
+
+        return result;
     }
 
-    public async Task SetValue<TValue>(string variableName, TValue value, CancellationToken token)
+    /// <summary>
+    ///     Write value to the PLC.
+    /// </summary>
+    /// <typeparam name="TValue"></typeparam>
+    /// <param name="variableName"></param>
+    /// <param name="value"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    public async Task SetValue<TValue>(string variableName, TValue value, CancellationToken token = default)
     {
         var address = ParseAndVerify(variableName, typeof(TValue));
 
@@ -170,9 +185,103 @@ public class Sharp7Plc : IPlc
             }
             finally
             {
-                ArrayPool<Byte>.Shared.Return(buffer);                
+                ArrayPool<byte>.Shared.Return(buffer);
             }
         }
+    }
+
+    /// <summary>
+    ///     Trigger PLC connection and start notification loop.
+    ///     <para>
+    ///         This method returns immediately and does not wait for the connection to be established.
+    ///     </para>
+    /// </summary>
+    /// <returns>Always true</returns>
+    [Obsolete("Use InitializeConnection.")]
+    public async Task<bool> InitializeAsync()
+    {
+        await s7Connector.InitializeAsync();
+
+#pragma warning disable 4014
+        Task.Run(async () =>
+        {
+            try
+            {
+                await s7Connector.Connect();
+            }
+            catch (Exception e)
+            {
+                Logger?.LogError(e, "Error while connecting to PLC");
+            }
+        });
+#pragma warning restore 4014
+
+        RunNotifications();
+
+        return true;
+    }
+
+    /// <summary>
+    ///     Initialize PLC connection and wait for connection to be established.
+    /// </summary>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    public async Task TriggerInitialize(CancellationToken token = default)
+    {
+        await s7Connector.InitializeAsync();
+
+        // Triger connection.
+        // The initial connection might fail. In this case a reconnect is initiated.
+        // So we ignore any errors and wait for ConnectionState Connected afterward.
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await s7Connector.Connect();
+            }
+            catch (Exception e)
+            {
+                Logger?.LogError(e, "Error while connecting to PLC");
+            }
+        }, token);
+
+        await s7Connector.ConnectionState
+            .FirstAsync(c => c == Enums.ConnectionState.Connected)
+            .ToTask(token);
+
+        RunNotifications();
+    }
+
+
+    /// <summary>
+    ///     Initialize PLC connection and wait for connection to be established.
+    /// </summary>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    public async Task InitializeConnection(CancellationToken token = default)
+    {
+        await s7Connector.InitializeAsync();
+
+        // Triger connection.
+        // The initial connection might fail. In this case a reconnect is initiated.
+        // So we ignore any errors and wait for ConnectionState Connected afterward.
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await s7Connector.Connect();
+            }
+            catch (Exception e)
+            {
+                Logger?.LogError(e, "Error while connecting to PLC");
+            }
+        }, token);
+
+        await s7Connector.ConnectionState
+            .FirstAsync(c => c == Enums.ConnectionState.Connected)
+            .ToTask(token);
+
+        RunNotifications();
     }
 
     protected virtual void Dispose(bool disposing)
@@ -240,21 +349,22 @@ public class Sharp7Plc : IPlc
 
             Logger?.LogTrace("PLC {Plc} notification perf: {Elements} calls, min {Min}, max {Max}, avg {Avg}, variables {Vars}, batch size {BatchSize}",
                              plcConnectionSettings.IpAddress,
-                             performanceCounter.Capacity, min, max, average, 
+                             performanceCounter.Capacity, min, max, average,
                              multiVariableSubscriptions.ExistingKeys.Count(),
                              MultiVarRequestMaxItems);
             performanceCounter.Clear();
         }
     }
 
-    private IDisposable RunNotifications(IS7Connector connector, TimeSpan cycle)
+    private void RunNotifications()
     {
-        return ConnectionState.FirstAsync()
+        ConnectionState.FirstAsync()
             .Select(states => states == Enums.ConnectionState.Connected)
-            .SelectMany(connected => GetAllValues(connected, connector))
+            .SelectMany(connected => GetAllValues(connected, s7Connector))
             .RepeatAfterDelay(MultiVarRequestCycleTime)
-            .LogAndRetryAfterDelay(Logger, cycle, "Error while getting batch notifications from plc")
-            .Subscribe();
+            .LogAndRetryAfterDelay(Logger, MultiVarRequestCycleTime, "Error while getting batch notifications from plc")
+            .Subscribe()
+            .AddDisposableTo(disposables);
     }
 
     ~Sharp7Plc()

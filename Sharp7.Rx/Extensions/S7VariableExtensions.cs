@@ -22,4 +22,23 @@ internal static class VariableAddressExtensions
 
     public static bool MatchesType(this VariableAddress address, Type type) =>
         supportedTypeMap.TryGetValue(type, out var map) && map(address);
+
+    public static Type GetClrType(this VariableAddress address) =>
+        address.Type switch
+        {
+            DbType.Bit => typeof(bool),
+            DbType.String => typeof(string),
+            DbType.WString => typeof(string),
+            DbType.Byte => address.Length == 1 ? typeof(byte) : typeof(byte[]),
+            DbType.Int => typeof(short),
+            DbType.UInt => typeof(ushort),
+            DbType.DInt => typeof(int),
+            DbType.UDInt => typeof(uint),
+            DbType.LInt => typeof(long),
+            DbType.ULInt => typeof(ulong),
+            DbType.Single => typeof(float),
+            DbType.Double => typeof(double),
+            _ => throw new ArgumentOutOfRangeException(nameof(address))
+        };
+
 }
