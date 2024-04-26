@@ -21,12 +21,13 @@ public class Sharp7Plc : IPlc
     private static readonly MethodInfo getValueMethod = typeof(Sharp7Plc).GetMethods()
         .Single(m => m.Name == nameof(GetValue) && m.GetGenericArguments().Length == 1);
 
-    private readonly CompositeDisposable disposables = new();
+    private IDisposable notificationSubscription;
     private readonly ConcurrentSubjectDictionary<string, byte[]> multiVariableSubscriptions = new(StringComparer.InvariantCultureIgnoreCase);
     private readonly List<long> performanceCounter = new(1000);
     private readonly PlcConnectionSettings plcConnectionSettings;
     private readonly CacheVariableNameParser variableNameParser = new CacheVariableNameParser(new VariableNameParser());
     private bool disposed;
+    private int initialized;
     private Sharp7Connector s7Connector;
 
     /// <summary>
@@ -197,92 +198,27 @@ public class Sharp7Plc : IPlc
     ///     </para>
     /// </summary>
     /// <returns>Always true</returns>
-    [Obsolete("Use InitializeConnection.")]
+    [Obsolete($"Use {nameof(InitializeConnection)} or {nameof(TriggerConnection)}.")]
     public async Task<bool> InitializeAsync()
     {
-        await s7Connector.InitializeAsync();
-
-#pragma warning disable 4014
-        Task.Run(async () =>
-        {
-            try
-            {
-                await s7Connector.Connect();
-            }
-            catch (Exception e)
-            {
-                Logger?.LogError(e, "Error while connecting to PLC");
-            }
-        });
-#pragma warning restore 4014
-
-        RunNotifications();
-
+        await TriggerConnection();
         return true;
     }
 
-    /// <summary>
-    ///     Initialize PLC connection and wait for connection to be established.
-    /// </summary>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    public async Task TriggerInitialize(CancellationToken token = default)
-    {
-        await s7Connector.InitializeAsync();
-
-        // Triger connection.
-        // The initial connection might fail. In this case a reconnect is initiated.
-        // So we ignore any errors and wait for ConnectionState Connected afterward.
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                await s7Connector.Connect();
-            }
-            catch (Exception e)
-            {
-                Logger?.LogError(e, "Error while connecting to PLC");
-            }
-        }, token);
-
-        await s7Connector.ConnectionState
-            .FirstAsync(c => c == Enums.ConnectionState.Connected)
-            .ToTask(token);
-
-        RunNotifications();
-    }
-
 
     /// <summary>
     ///     Initialize PLC connection and wait for connection to be established.
     /// </summary>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task InitializeConnection(CancellationToken token = default)
-    {
-        await s7Connector.InitializeAsync();
+    public async Task InitializeConnection(CancellationToken token = default) => await DoInitializeConnection(true, token);
 
-        // Triger connection.
-        // The initial connection might fail. In this case a reconnect is initiated.
-        // So we ignore any errors and wait for ConnectionState Connected afterward.
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                await s7Connector.Connect();
-            }
-            catch (Exception e)
-            {
-                Logger?.LogError(e, "Error while connecting to PLC");
-            }
-        }, token);
-
-        await s7Connector.ConnectionState
-            .FirstAsync(c => c == Enums.ConnectionState.Connected)
-            .ToTask(token);
-
-        RunNotifications();
-    }
+    /// <summary>
+    ///     Initialize PLC and trigger connection. This method will not wait for the connection to be established.
+    /// </summary>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    public async Task TriggerConnection(CancellationToken token = default) => await DoInitializeConnection(false, token);
 
     protected virtual void Dispose(bool disposing)
     {
@@ -291,7 +227,8 @@ public class Sharp7Plc : IPlc
 
         if (disposing)
         {
-            disposables.Dispose();
+            notificationSubscription?.Dispose();
+            notificationSubscription = null;
 
             if (s7Connector != null)
             {
@@ -304,11 +241,37 @@ public class Sharp7Plc : IPlc
         }
     }
 
-    private async Task<Unit> GetAllValues(bool connected, IS7Connector connector)
+    private async Task DoInitializeConnection(bool waitForConnection, CancellationToken token)
     {
-        if (!connected)
-            return Unit.Default;
+        if (Interlocked.Exchange(ref initialized, 1) == 1) return;
 
+        await s7Connector.InitializeAsync();
+
+        // Triger connection.
+        // The initial connection might fail. In this case a reconnect is initiated.
+        // So we ignore any errors and wait for ConnectionState Connected afterward.
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await s7Connector.Connect();
+            }
+            catch (Exception e)
+            {
+                Logger?.LogError(e, "Intiial PLC connection failed.");
+            }
+        }, token);
+
+        if (waitForConnection)
+            await s7Connector.ConnectionState
+                .FirstAsync(c => c == Enums.ConnectionState.Connected)
+                .ToTask(token);
+
+        StartNotificationLoop();
+    }
+
+    private async Task<Unit> GetAllValues(IS7Connector connector)
+    {
         if (multiVariableSubscriptions.ExistingKeys.IsEmpty())
             return Unit.Default;
 
@@ -356,15 +319,23 @@ public class Sharp7Plc : IPlc
         }
     }
 
-    private void RunNotifications()
+    private void StartNotificationLoop()
     {
-        ConnectionState.FirstAsync()
-            .Select(states => states == Enums.ConnectionState.Connected)
-            .SelectMany(connected => GetAllValues(connected, s7Connector))
-            .RepeatAfterDelay(MultiVarRequestCycleTime)
-            .LogAndRetryAfterDelay(Logger, MultiVarRequestCycleTime, "Error while getting batch notifications from plc")
-            .Subscribe()
-            .AddDisposableTo(disposables);
+        if (notificationSubscription != null)
+            // notification loop already running
+            return;
+
+        var subscription =
+            ConnectionState
+                .FirstAsync(states => states == Enums.ConnectionState.Connected)
+                .SelectMany(_ => GetAllValues(s7Connector))
+                .RepeatAfterDelay(MultiVarRequestCycleTime)
+                .LogAndRetryAfterDelay(Logger, MultiVarRequestCycleTime, "Error while getting batch notifications from plc")
+                .Subscribe();
+
+        if (Interlocked.CompareExchange(ref notificationSubscription, subscription, null) != null)
+            // Subscription has already been created (race condition). Dispose new subscription.
+            subscription.Dispose();
     }
 
     ~Sharp7Plc()

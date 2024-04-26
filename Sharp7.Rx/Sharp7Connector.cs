@@ -213,7 +213,7 @@ internal class Sharp7Connector : IS7Connector
     private void EnsureConnectionValid()
     {
         if (disposed)
-            throw new ObjectDisposedException("S7Connector");
+            throw new ObjectDisposedException(nameof(Sharp7Connector));
 
         if (sharp7 == null)
             throw new InvalidOperationException("S7 driver is not initialized.");
