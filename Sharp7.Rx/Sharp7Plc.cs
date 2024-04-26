@@ -188,7 +188,7 @@ public class Sharp7Plc : IPlc
             {
                 ValueConverter.WriteToBuffer(buffer, value, address);
 
-                await s7Connector.WriteBytes(address.Operand, address.Start, buffer, address.DbNo, token);
+                await s7Connector.WriteBytes(address.Operand, address.Start, buffer, address.DbNo, address.BufferLength, token);
             }
             finally
             {
@@ -295,7 +295,7 @@ public class Sharp7Plc : IPlc
         StartNotificationLoop();
     }
 
-    private async Task<Unit> GetAllValues(IS7Connector connector)
+    private async Task<Unit> GetAllValues(Sharp7Connector connector)
     {
         if (multiVariableSubscriptions.ExistingKeys.IsEmpty())
             return Unit.Default;

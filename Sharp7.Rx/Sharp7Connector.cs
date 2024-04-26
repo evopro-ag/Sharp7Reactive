@@ -168,11 +168,11 @@ internal class Sharp7Connector: IDisposable
         EnsureSuccessOrThrow(result, $"Error writing {operand}{dbNo}:{startByteAddress} bit {bitAdress}");
     }
 
-    public async Task WriteBytes(Operand operand, ushort startByteAddress, byte[] data, ushort dbNo, CancellationToken token)
+    public async Task WriteBytes(Operand operand, ushort startByteAddress, byte[] data, ushort dbNo, ushort bytesToWrite, CancellationToken token)
     {
         EnsureConnectionValid();
 
-        var result = await Task.Factory.StartNew(() => sharp7.WriteArea(operand.ToArea(), dbNo, startByteAddress, data.Length, S7WordLength.Byte, data), token, TaskCreationOptions.None, scheduler);
+        var result = await Task.Factory.StartNew(() => sharp7.WriteArea(operand.ToArea(), dbNo, startByteAddress, bytesToWrite, S7WordLength.Byte, data), token, TaskCreationOptions.None, scheduler);
         token.ThrowIfCancellationRequested();
 
         EnsureSuccessOrThrow(result, $"Error writing {operand}{dbNo}:{startByteAddress}.{data.Length}");
