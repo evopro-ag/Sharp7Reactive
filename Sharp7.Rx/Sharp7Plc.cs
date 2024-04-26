@@ -11,6 +11,7 @@ using Sharp7.Rx.Enums;
 using Sharp7.Rx.Extensions;
 using Sharp7.Rx.Interfaces;
 using Sharp7.Rx.Settings;
+using Sharp7.Rx.Utils;
 
 namespace Sharp7.Rx;
 
@@ -21,13 +22,17 @@ public class Sharp7Plc : IPlc
     private static readonly MethodInfo getValueMethod = typeof(Sharp7Plc).GetMethods()
         .Single(m => m.Name == nameof(GetValue) && m.GetGenericArguments().Length == 1);
 
-    private IDisposable notificationSubscription;
+    private static readonly MethodInfo createNotificationMethod = typeof(Sharp7Plc).GetMethods()
+        .Single(m => m.Name == nameof(CreateNotification) && m.GetGenericArguments().Length == 1);
+
     private readonly ConcurrentSubjectDictionary<string, byte[]> multiVariableSubscriptions = new(StringComparer.InvariantCultureIgnoreCase);
     private readonly List<long> performanceCounter = new(1000);
     private readonly PlcConnectionSettings plcConnectionSettings;
     private readonly CacheVariableNameParser variableNameParser = new CacheVariableNameParser(new VariableNameParser());
     private bool disposed;
     private int initialized;
+
+    private IDisposable notificationSubscription;
     private Sharp7Connector s7Connector;
 
     /// <summary>
@@ -135,10 +140,11 @@ public class Sharp7Plc : IPlc
 
     /// <summary>
     ///     Read PLC variable as object.
+    ///     The return type is automatically infered from the variable name.
     /// </summary>
     /// <param name="variableName"></param>
     /// <param name="token"></param>
-    /// <returns></returns>
+    /// <returns>The actual return type is infered from the variable name.</returns>
     public async Task<object> GetValue(string variableName, CancellationToken token = default)
     {
         var address = variableNameParser.Parse(variableName);
@@ -189,6 +195,25 @@ public class Sharp7Plc : IPlc
                 ArrayPool<byte>.Shared.Return(buffer);
             }
         }
+    }
+
+    /// <summary>
+    ///     Creates an observable of object for a variable.
+    ///     The return type is automatically infered from the variable name.
+    /// </summary>
+    /// <param name="variableName"></param>
+    /// <param name="transmissionMode"></param>
+    /// <returns>The return type is infered from the variable name.</returns>
+    public IObservable<object> CreateNotification(string variableName, TransmissionMode transmissionMode)
+    {
+        var address = variableNameParser.Parse(variableName);
+        var clrType = address.GetClrType();
+
+        var genericCreateNotification = createNotificationMethod!.MakeGenericMethod(clrType);
+
+        var genericNotification = genericCreateNotification.Invoke(this, [variableName, transmissionMode]);
+
+        return SignatureConverter.ConvertToObjectObservable(genericNotification, clrType);
     }
 
     /// <summary>
