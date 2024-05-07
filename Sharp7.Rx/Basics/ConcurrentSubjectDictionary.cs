@@ -1,128 +1,130 @@
-﻿using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
+﻿using System.Collections.Concurrent;
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
-using Sharp7.Rx.Extensions;
 
-namespace Sharp7.Rx.Basics
+namespace Sharp7.Rx.Basics;
+
+internal class ConcurrentSubjectDictionary<TKey, TValue> : IDisposable
 {
-    internal class ConcurrentSubjectDictionary<TKey, TValue> : IDisposable
+    private readonly object dictionaryLock = new object();
+    private readonly Func<TKey, TValue> valueFactory;
+    private ConcurrentDictionary<TKey, SubjectWithRefCounter> dictionary;
+
+    public ConcurrentSubjectDictionary()
     {
-        private readonly object dictionaryLock = new object();
-        private readonly Func<TKey, TValue> valueFactory;
-        private ConcurrentDictionary<TKey, SubjectWithRefCounter> dictionary;
+        dictionary = new ConcurrentDictionary<TKey, SubjectWithRefCounter>();
+    }
 
-        public ConcurrentSubjectDictionary()
+    public ConcurrentSubjectDictionary(IEqualityComparer<TKey> comparer)
+    {
+        dictionary = new ConcurrentDictionary<TKey, SubjectWithRefCounter>(comparer);
+    }
+
+    public ConcurrentSubjectDictionary(TValue initialValue, IEqualityComparer<TKey> comparer)
+    {
+        valueFactory = _ => initialValue;
+        dictionary = new ConcurrentDictionary<TKey, SubjectWithRefCounter>(comparer);
+    }
+
+    public ConcurrentSubjectDictionary(TValue initialValue)
+    {
+        valueFactory = _ => initialValue;
+        dictionary = new ConcurrentDictionary<TKey, SubjectWithRefCounter>();
+    }
+
+    public ConcurrentSubjectDictionary(Func<TKey, TValue> valueFactory = null)
+    {
+        this.valueFactory = valueFactory;
+        dictionary = new ConcurrentDictionary<TKey, SubjectWithRefCounter>();
+    }
+
+    public IEnumerable<TKey> ExistingKeys => dictionary.Keys;
+
+    public bool IsDisposed { get; private set; }
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    public DisposableItem<TValue> GetOrCreateObservable(TKey key)
+    {
+        lock (dictionaryLock)
         {
-            dictionary = new ConcurrentDictionary<TKey, SubjectWithRefCounter>();
-        }
-
-        public ConcurrentSubjectDictionary(IEqualityComparer<TKey> comparer)
-        {
-            dictionary = new ConcurrentDictionary<TKey, SubjectWithRefCounter>(comparer);
-        }
-
-        public ConcurrentSubjectDictionary(TValue initialValue, IEqualityComparer<TKey> comparer)
-        {
-            valueFactory = _ => initialValue;
-            dictionary = new ConcurrentDictionary<TKey, SubjectWithRefCounter>(comparer);
-        }
-
-        public ConcurrentSubjectDictionary(TValue initialValue)
-        {
-            valueFactory = _ => initialValue;
-            dictionary = new ConcurrentDictionary<TKey, SubjectWithRefCounter>();
-        }
-
-        public ConcurrentSubjectDictionary(Func<TKey, TValue> valueFactory = null)
-        {
-            this.valueFactory = valueFactory;
-            dictionary = new ConcurrentDictionary<TKey, SubjectWithRefCounter>();
-        }
-
-        public IEnumerable<TKey> ExistingKeys => dictionary.Keys;
-
-        public bool IsDisposed { get; private set; }
-
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        public DisposableItem<TValue> GetOrCreateObservable(TKey key)
-        {
-            lock (dictionaryLock)
-            {
-                var subject = dictionary.AddOrUpdate(key, k => new SubjectWithRefCounter {Counter = 1, Subject = CreateSubject(k)}, (key1, counter) =>
+            var subject = dictionary.AddOrUpdate(
+                key,
+                k => new SubjectWithRefCounter(CreateSubject(k)),
+                (_, subjectWithRefCounter) =>
                 {
-                    counter.Counter = counter.Counter + 1;
-                    return counter;
+                    subjectWithRefCounter.IncreaseCount();
+                    return subjectWithRefCounter;
                 });
 
-                return new DisposableItem<TValue>(subject.Subject.AsObservable(), () => RemoveIfNoLongerInUse(key));
-            }
+            return new DisposableItem<TValue>(subject.Subject.AsObservable(), () => RemoveIfNoLongerInUse(key));
         }
+    }
 
-        public bool TryGetObserver(TKey key, out IObserver<TValue> subject)
+    public bool TryGetObserver(TKey key, out IObserver<TValue> subject)
+    {
+        if (dictionary.TryGetValue(key, out var subjectWithRefCount))
         {
-            SubjectWithRefCounter subjectWithRefCount;
-            if (dictionary.TryGetValue(key, out subjectWithRefCount))
-            {
-                subject = subjectWithRefCount.Subject.AsObserver();
-                return true;
-            }
-
-            subject = null;
-            return false;
+            subject = subjectWithRefCount.Subject.AsObserver();
+            return true;
         }
 
-        protected virtual void Dispose(bool disposing)
+        subject = null;
+        return false;
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (IsDisposed)
+            return;
+        if (disposing && dictionary != null)
         {
-            if (IsDisposed)
-                return;
-            if (disposing && dictionary != null)
-            {
-                dictionary.Values.DisposeItems();
-                dictionary.Clear();
-                dictionary = null;
-            }
-
-            IsDisposed = true;
+            foreach (var subjectWithRefCounter in dictionary)
+                subjectWithRefCounter.Value.Subject.OnCompleted();
+            dictionary.Clear();
+            dictionary = null;
         }
 
-        private ISubject<TValue> CreateSubject(TKey key)
+        IsDisposed = true;
+    }
+
+    private ISubject<TValue> CreateSubject(TKey key)
+    {
+        if (valueFactory == null)
+            return new Subject<TValue>();
+        return new BehaviorSubject<TValue>(valueFactory(key));
+    }
+
+    private void RemoveIfNoLongerInUse(TKey variableName)
+    {
+        lock (dictionaryLock)
+            if (dictionary.TryGetValue(variableName, out var subjectWithRefCount))
+                if (subjectWithRefCount.DecreaseCount() < 1)
+                    dictionary.TryRemove(variableName, out _);
+    }
+
+    ~ConcurrentSubjectDictionary()
+    {
+        Dispose(false);
+    }
+
+    class SubjectWithRefCounter
+    {
+        private int counter = 1;
+
+        public SubjectWithRefCounter(ISubject<TValue> subject)
         {
-            if (valueFactory == null)
-                return new Subject<TValue>();
-            return new BehaviorSubject<TValue>(valueFactory(key));
+            Subject = subject;
         }
 
-        private void RemoveIfNoLongerInUse(TKey variableName)
-        {
-            lock (dictionaryLock)
-            {
-                SubjectWithRefCounter subjectWithRefCount;
-                if (dictionary.TryGetValue(variableName, out subjectWithRefCount))
-                {
-                    if (subjectWithRefCount.Counter == 1)
-                        dictionary.TryRemove(variableName, out subjectWithRefCount);
-                    else subjectWithRefCount.Counter--;
-                }
-            }
-        }
+        public ISubject<TValue> Subject { get; }
 
-        ~ConcurrentSubjectDictionary()
-        {
-            Dispose(false);
-        }
-
-        class SubjectWithRefCounter
-        {
-            public int Counter { get; set; }
-            public ISubject<TValue> Subject { get; set; }
-        }
+        public int DecreaseCount() => Interlocked.Decrement(ref counter);
+        public int IncreaseCount() => Interlocked.Increment(ref counter);
     }
 }

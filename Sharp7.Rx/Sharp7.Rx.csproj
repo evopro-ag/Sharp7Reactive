@@ -1,38 +1,48 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
+
+    <LangVersion>12.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AnalysisLevel>latest-Recommended</AnalysisLevel>
+
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
     <Authors>evopro system engineering AG</Authors>
     <Company>evopro system engineering AG</Company>
-    <Description>Reactive framework for Sharp7, the Ethernet S7 PLC communication suite</Description>
+    <Description>Reactive framework for Sharp7, the Ethernet S7 PLC communication suite. Handling RFC1006 connections to Siemens S7 300, 1200 and 1500.</Description>
+    <PackageTags>linqpad-samples</PackageTags>
     <PackageProjectUrl>https://github.com/evopro-ag/Sharp7Reactive</PackageProjectUrl>
-    <PackageLicenseUrl>https://raw.githubusercontent.com/evopro-ag/Sharp7Reactive/master/LICENSE</PackageLicenseUrl>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+
+    <!--
+       CA1848: For improved performance, use the LoggerMessage delegates
+       CA2254: The logging message template should not vary between calls
+       CA1859: Change type of field 'xxx' from interface to type for performance reasons
+    -->
+    <NoWarn>$(NoWarn);CA1848;CA2254;CA1859</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="3.0.0" />
-    <PackageReference Include="Sharp7" Version="1.0.50" />
-    <PackageReference Include="System.Interactive" Version="4.0.0" />
-    <PackageReference Include="System.Reactive" Version="4.1.0" />
+    <PackageReference Include="JetBrains.Annotations" Version="2023.3.0" PrivateAssets="All" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" />
+    <PackageReference Include="Sharp7" Version="1.1.84" />
+    <PackageReference Include="System.Interactive" Version="6.0.1" />
+    <PackageReference Include="System.Reactive" Version="6.0.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Update="Resources\StringResources.Designer.cs">
-      <DesignTime>True</DesignTime>
-      <AutoGen>True</AutoGen>
-      <DependentUpon>StringResources.resx</DependentUpon>
-    </Compile>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Update="Resources\StringResources.resx">
-      <Generator>ResXFileCodeGenerator</Generator>
-      <LastGenOutput>StringResources.Designer.cs</LastGenOutput>
-    </EmbeddedResource>
+    <Content Include="linqpad-samples/**/*.*">
+      <Pack>true</Pack>
+      <PackagePath>linqpad-samples\;content</PackagePath>
+    </Content>
   </ItemGroup>
-
 </Project>

@@ -1,11 +1,23 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.28010.2041
+# Visual Studio Version 17
+VisualStudioVersion = 17.9.34728.123
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sharp7.Rx", "Sharp7.Rx\Sharp7.Rx.csproj", "{690A7E0E-BE95-49AC-AF2F-7FEA2F63204A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sharp7.Rx.Tests", "Sharp7.Rx.Tests\Sharp7.Rx.Tests.csproj", "{1BDD07D2-6540-4ACF-81E7-98300421073B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sharp7.Rx.Tests", "Sharp7.Rx.Tests\Sharp7.Rx.Tests.csproj", "{1BDD07D2-6540-4ACF-81E7-98300421073B}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_Solution Items", "_Solution Items", "{3A9DEBA7-8F53-4554-869C-7C99F0A4932E}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+		.gitignore = .gitignore
+		README.md = README.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Workflow", "Workflow", "{1CFDA2EA-49CF-4B96-A9C9-B12B21B3D78E}"
+	ProjectSection(SolutionItems) = preProject
+		.github\workflows\release.yml = .github\workflows\release.yml
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -24,6 +36,9 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{1CFDA2EA-49CF-4B96-A9C9-B12B21B3D78E} = {3A9DEBA7-8F53-4554-869C-7C99F0A4932E}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {ABA1FD47-15EE-4588-9BA7-0116C635BFC4}

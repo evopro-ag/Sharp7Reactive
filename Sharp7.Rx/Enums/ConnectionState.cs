@@ -1,10 +1,10 @@
-﻿namespace Sharp7.Rx.Enums
+﻿namespace Sharp7.Rx.Enums;
+
+public enum ConnectionState
 {
-    public enum ConnectionState
-    {
-        Initial,
-        Connected,
-        DisconnectedByUser,
-        ConnectionLost
-    }
+    Initial,
+    Connected,
+    DisconnectedByUser,
+    ConnectionLost,
+    Disposed
 }

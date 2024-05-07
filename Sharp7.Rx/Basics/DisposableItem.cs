@@ -1,38 +1,34 @@
-﻿using System;
-using System.Linq;
+﻿namespace Sharp7.Rx.Basics;
 
-namespace Sharp7.Rx.Basics
+internal class DisposableItem<TValue> : IDisposable
 {
-    internal class DisposableItem<TValue> : IDisposable
+    private readonly Action disposeAction;
+
+    bool disposed;
+
+    public DisposableItem(IObservable<TValue> observable, Action disposeAction)
     {
-        private readonly Action disposeAction;
+        this.disposeAction = disposeAction;
+        Observable = observable;
+    }
 
-        bool disposed;
+    public IObservable<TValue> Observable { get; }
 
-        public DisposableItem(IObservable<TValue> observable, Action disposeAction)
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (disposed) return;
+
+        if (disposing)
         {
-            this.disposeAction = disposeAction;
-            Observable = observable;
+            disposeAction();
         }
 
-        public IObservable<TValue> Observable { get; }
-
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (disposed) return;
-
-            if (disposing)
-            {
-                disposeAction();
-            }
-
-            disposed = true;
-        }
+        disposed = true;
     }
 }
