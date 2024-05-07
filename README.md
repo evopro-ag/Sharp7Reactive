@@ -15,6 +15,9 @@ It combines the S7 communication library with the power of System.Reactive.
 - Threadsafe (Sharp7 is basically not threadsafe)
 
 ## Quick start
+
+Install the [Sharp7.Rx Nuget package](https://www.nuget.org/packages/Sharp7.Rx).
+
 The example below shows you how to create and use the Sharp7Rx PLC.
 
 ```csharp
@@ -28,10 +31,11 @@ using (var disposables = new CompositeDisposable())
     await plc.InitializeConnection();
     
     await plc.SetValue<bool>("DB2.DBX0.4", true); // set a bit
-    var bit = await plc.GetValue<int>("DB2.int4"); // get a bit
-    
+    var value = await plc.GetValue<short>("DB2.Int4"); // get an 16 bit integer
+    Console.WriteLine(value)
+
     // create a nofication for data change in the plc
-    var notification = plc.CreateNotification<bool>("DB1.DBX0.2", TransmissionMode.OnChange, TimeSpan.FromMilliseconds(100))
+    var notification = plc.CreateNotification<bool>("DB1.DBX0.2", TransmissionMode.OnChange)
                           .Where(b => b) //select rising edge
                           .Do(_ => doStuff())
                           .Subscribe();
@@ -43,7 +47,13 @@ using (var disposables = new CompositeDisposable())
 }
 ```
 
-the best way to test your PLC application is running your [SoftPLC](https://github.com/fbarresi/softplc) locally.
+The best way to test your PLC application is running your [SoftPLC](https://github.com/fbarresi/softplc) locally.
+
+## Examples
+
+This library comes with integrated [LinqPad](https://www.linqpad.net/) examples - even for the free edition. Just download the [Sharp7.Rx Nuget package](https://www.nuget.org/packages/Sharp7.Rx) after pressing `Ctrl + Shift + P` and browse the "Samples".
+
+[Sharp7Monitor](https://github.com/Peter-B-/Sharp7.Monitor) is a console application for monitoring S7 variables over RFC1006, based on this library.
 
 ## Addressing rules
 
@@ -90,7 +100,6 @@ public Sharp7Plc(string ipAddress, int rackNumber, int cpuMpiAddress, int port =
 ```
 
 The default value for `multiVarRequestCycleTime` is 100 ms, the minimal value is 5 ms.
-
 
 ## Would you like to contribute?
 
