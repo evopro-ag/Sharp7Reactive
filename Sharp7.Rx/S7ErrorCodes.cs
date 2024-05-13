@@ -1,7 +1,5 @@
 ﻿#nullable enable
 
-using System.Diagnostics.CodeAnalysis;
-
 namespace Sharp7.Rx;
 
 public static class S7ErrorCodes
@@ -22,7 +20,7 @@ public static class S7ErrorCodes
         {0x900000, "This happens when the DB is not long enough."},
         {
             0x40000, """
-                     This error occurs when the DB is "optimized" or "PUT/GET communication" is not enabled.
+                     This can happen when the cpu MPI address or rack is wrong, the DB is "optimized", or "PUT/GET communication" is not enabled.
                      See https://snap7.sourceforge.net/snap7_client.html#target_compatibility.
                      """
         }
