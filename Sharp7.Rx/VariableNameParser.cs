@@ -120,7 +120,7 @@ internal class VariableNameParser : IVariableNameParser
             {
                 if (defaultValue.HasValue)
                     return defaultValue.Value;
-                throw new InvalidS7AddressException($"Variable of type {type} must have a length set \"{input}\"", input);
+                throw new InvalidS7AddressException($"Variable of type {type} must have a length set. Example \"db12.byte10.3\", found \"{input}\"", input);
             }
 
             if (!ushort.TryParse(match.Groups["bitOrLength"].Value, out var result))
@@ -132,7 +132,7 @@ internal class VariableNameParser : IVariableNameParser
         byte GetBit()
         {
             if (!match.Groups["bitOrLength"].Success)
-                throw new InvalidS7AddressException($"Variable of type {type} must have a bit number set \"{input}\"", input);
+                throw new InvalidS7AddressException($"Variable of type {type} must have a bit number set. Example \"db12.bit10.3\", found \"{input}\"", input);
 
             if (!byte.TryParse(match.Groups["bitOrLength"].Value, out var result))
                 throw new InvalidS7AddressException($"\"{match.Groups["bitOrLength"].Value}\" is an invalid bit number in \"{input}\"", input);
