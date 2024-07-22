@@ -9,7 +9,9 @@
     <AnalysisLevel>latest-Recommended</AnalysisLevel>
 
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
+
     <Authors>evopro system engineering AG</Authors>
     <Company>evopro system engineering AG</Company>
     <Description>Reactive framework for Sharp7, the Ethernet S7 PLC communication suite. Handling RFC1006 connections to Siemens S7 300, 1200 and 1500.</Description>
@@ -23,8 +25,9 @@
        CA1848: For improved performance, use the LoggerMessage delegates
        CA2254: The logging message template should not vary between calls
        CA1859: Change type of field 'xxx' from interface to type for performance reasons
+       CS1591: Missing XML comment for publicly visible type or member
     -->
-    <NoWarn>$(NoWarn);CA1848;CA2254;CA1859</NoWarn>
+    <NoWarn>$(NoWarn);CA1848;CA2254;CA1859;CS1591</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
