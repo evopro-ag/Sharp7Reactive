@@ -192,7 +192,7 @@ public class Sharp7Plc : IPlc
             }
             finally
             {
-                ArrayPool<byte>.Shared.Return(buffer);
+                arrayPool.Return(buffer);
             }
         }
     }
