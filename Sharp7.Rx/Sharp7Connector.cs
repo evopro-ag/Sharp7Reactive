@@ -116,12 +116,11 @@ internal class Sharp7Connector : IDisposable
         return buffers.ToDictionary(arg => arg.VariableName, arg => arg.Buffer);
     }
 
-    public Task InitializeAsync()
+    public void InitializeAsync()
     {
         try
         {
-            sharp7 = new S7Client();
-            sharp7.PLCPort = port;
+            sharp7 = new S7Client {PLCPort = port};
 
             var subscription =
                 ConnectionState
@@ -138,8 +137,6 @@ internal class Sharp7Connector : IDisposable
         {
             Logger?.LogError(ex, "S7 driver for {Connection} could not be initialized", ConnectionIdentifier);
         }
-
-        return Task.FromResult(true);
     }
 
     public async Task<byte[]> ReadBytes(Operand operand, ushort startByteAddress, ushort bytesToRead, ushort dbNo, CancellationToken token)

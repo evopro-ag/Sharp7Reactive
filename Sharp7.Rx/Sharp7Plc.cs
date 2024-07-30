@@ -28,7 +28,7 @@ public class Sharp7Plc : IPlc
     private readonly ConcurrentSubjectDictionary<string, byte[]> multiVariableSubscriptions = new(StringComparer.InvariantCultureIgnoreCase);
     private readonly List<long> performanceCounter = new(1000);
     private readonly PlcConnectionSettings plcConnectionSettings;
-    private readonly CacheVariableNameParser variableNameParser = new CacheVariableNameParser(new VariableNameParser());
+    private readonly CacheVariableNameParser variableNameParser = new(new VariableNameParser());
     private bool disposed;
     private int initialized;
 
@@ -37,10 +37,10 @@ public class Sharp7Plc : IPlc
 
     /// <summary>
     /// </summary>
-    /// <param name="ipAddress"></param>
-    /// <param name="rackNumber"></param>
-    /// <param name="cpuMpiAddress"></param>
-    /// <param name="port"></param>
+    /// <param name="ipAddress">IP address of S7.</param>
+    /// <param name="rackNumber">See <see href="https://github.com/fbarresi/Sharp7/wiki/Connection#rack-and-slot">Sharp7 wiki</see></param>
+    /// <param name="cpuMpiAddress">See <see href="https://github.com/fbarresi/Sharp7/wiki/Connection#rack-and-slot">Sharp7 wiki</see></param>
+    /// <param name="port">TCP port for communication</param>
     /// <param name="multiVarRequestCycleTime">
     ///     <para>
     ///         Polling interval for multi variable read from PLC.
@@ -55,7 +55,7 @@ public class Sharp7Plc : IPlc
     /// </param>
     public Sharp7Plc(string ipAddress, int rackNumber, int cpuMpiAddress, int port = 102, TimeSpan? multiVarRequestCycleTime = null)
     {
-        plcConnectionSettings = new PlcConnectionSettings { IpAddress = ipAddress, RackNumber = rackNumber, CpuMpiAddress = cpuMpiAddress, Port = port };
+        plcConnectionSettings = new PlcConnectionSettings {IpAddress = ipAddress, RackNumber = rackNumber, CpuMpiAddress = cpuMpiAddress, Port = port};
         s7Connector = new Sharp7Connector(plcConnectionSettings, variableNameParser);
         ConnectionState = s7Connector.ConnectionState;
 
@@ -90,10 +90,6 @@ public class Sharp7Plc : IPlc
     ///     Create an Observable for a given variable. Multiple notifications are automatically combined into a multi-variable subscription to
     ///     reduce network trafic and PLC workload.
     /// </summary>
-    /// <typeparam name="TValue"></typeparam>
-    /// <param name="variableName"></param>
-    /// <param name="transmissionMode"></param>
-    /// <returns></returns>
     public IObservable<TValue> CreateNotification<TValue>(string variableName, TransmissionMode transmissionMode)
     {
         return Observable.Create<TValue>(observer =>
@@ -128,12 +124,28 @@ public class Sharp7Plc : IPlc
     }
 
     /// <summary>
-    ///     Read PLC variable as generic variable.
+    ///     Creates an observable of object for a variable.
+    ///     The return type is automatically infered from the variable name.
     /// </summary>
-    /// <typeparam name="TValue"></typeparam>
-    /// <param name="variableName"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
+    /// <returns>The return type is infered from the variable name.</returns>
+    public IObservable<object> CreateNotification(string variableName, TransmissionMode transmissionMode)
+    {
+        var address = variableNameParser.Parse(variableName);
+        var clrType = address.GetClrType();
+
+        var genericCreateNotification = createNotificationMethod!.MakeGenericMethod(clrType);
+
+        var genericNotification = genericCreateNotification.Invoke(this, [variableName, transmissionMode]);
+
+        return SignatureConverter.ConvertToObjectObservable(genericNotification, clrType);
+    }
+
+    /// <summary>
+    ///     Read PLC variable as generic variable.
+    ///     <para>
+    ///         The method will fail with a <see cref="InvalidOperationException" />, if <see cref="ConnectionState" /> is not <see cref="ConnectionState.Connected" />.
+    ///     </para>
+    /// </summary>
     public async Task<TValue> GetValue<TValue>(string variableName, CancellationToken token = default)
     {
         var address = ParseAndVerify(variableName, typeof(TValue));
@@ -145,9 +157,10 @@ public class Sharp7Plc : IPlc
     /// <summary>
     ///     Read PLC variable as object.
     ///     The return type is automatically infered from the variable name.
+    ///     <para>
+    ///         The method will fail with a <see cref="InvalidOperationException" />, if <see cref="ConnectionState" /> is not <see cref="ConnectionState.Connected" />.
+    ///     </para>
     /// </summary>
-    /// <param name="variableName"></param>
-    /// <param name="token"></param>
     /// <returns>The actual return type is infered from the variable name.</returns>
     public async Task<object> GetValue(string variableName, CancellationToken token = default)
     {
@@ -168,12 +181,10 @@ public class Sharp7Plc : IPlc
 
     /// <summary>
     ///     Write value to the PLC.
+    ///     <para>
+    ///         The method will fail with a <see cref="InvalidOperationException" />, if <see cref="ConnectionState" /> is not <see cref="ConnectionState.Connected" />.
+    ///     </para>
     /// </summary>
-    /// <typeparam name="TValue"></typeparam>
-    /// <param name="variableName"></param>
-    /// <param name="value"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
     public async Task SetValue<TValue>(string variableName, TValue value, CancellationToken token = default)
     {
         var address = ParseAndVerify(variableName, typeof(TValue));
@@ -183,7 +194,7 @@ public class Sharp7Plc : IPlc
             // Special handling for bools, which are written on a by-bit basis. Writing a complete byte would
             // overwrite other bits within this byte.
 
-            await s7Connector.WriteBit(address.Operand, address.Start, address.Bit!.Value, (bool)(object)value, address.DbNo, token);
+            await s7Connector.WriteBit(address.Operand, address.Start, address.Bit!.Value, (bool) (object) value, address.DbNo, token);
         }
         else
         {
@@ -202,25 +213,6 @@ public class Sharp7Plc : IPlc
     }
 
     /// <summary>
-    ///     Creates an observable of object for a variable.
-    ///     The return type is automatically infered from the variable name.
-    /// </summary>
-    /// <param name="variableName"></param>
-    /// <param name="transmissionMode"></param>
-    /// <returns>The return type is infered from the variable name.</returns>
-    public IObservable<object> CreateNotification(string variableName, TransmissionMode transmissionMode)
-    {
-        var address = variableNameParser.Parse(variableName);
-        var clrType = address.GetClrType();
-
-        var genericCreateNotification = createNotificationMethod!.MakeGenericMethod(clrType);
-
-        var genericNotification = genericCreateNotification.Invoke(this, [variableName, transmissionMode]);
-
-        return SignatureConverter.ConvertToObjectObservable(genericNotification, clrType);
-    }
-
-    /// <summary>
     ///     Trigger PLC connection and start notification loop.
     ///     <para>
     ///         This method returns immediately and does not wait for the connection to be established.
@@ -228,26 +220,35 @@ public class Sharp7Plc : IPlc
     /// </summary>
     /// <returns>Always true</returns>
     [Obsolete($"Use {nameof(InitializeConnection)} or {nameof(TriggerConnection)}.")]
-    public async Task<bool> InitializeAsync()
+    public Task<bool> InitializeAsync()
     {
-        await TriggerConnection();
-        return true;
+        TriggerConnection();
+        return Task.FromResult(true);
     }
 
 
     /// <summary>
-    ///     Initialize PLC connection and wait for connection to be established.
+    ///     Initialize PLC connection and wait for connection to be established (<see cref="ConnectionState" /> is <see cref="ConnectionState.Connected" />).
     /// </summary>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task InitializeConnection(CancellationToken token = default) => await DoInitializeConnection(true, token);
+    public async Task InitializeConnection(CancellationToken token = default)
+    {
+        DoInitializeConnection();
+        await s7Connector.ConnectionState
+            .FirstAsync(c => c == Enums.ConnectionState.Connected)
+            .ToTask(token);
+    }
 
     /// <summary>
     ///     Initialize PLC and trigger connection. This method will not wait for the connection to be established.
+    ///     <para>
+    ///         Without an established connection, it is safe to call <see cref="CreateNotification" />, but <see cref="GetValue{TValue}" />
+    ///         and <see cref="SetValue{TValue}" /> will fail.
+    ///     </para>
     /// </summary>
-    /// <param name="token"></param>
     /// <returns></returns>
-    public async Task TriggerConnection(CancellationToken token = default) => await DoInitializeConnection(false, token);
+    public void TriggerConnection() => DoInitializeConnection();
 
     protected virtual void Dispose(bool disposing)
     {
@@ -270,11 +271,12 @@ public class Sharp7Plc : IPlc
         }
     }
 
-    private async Task DoInitializeConnection(bool waitForConnection, CancellationToken token)
+    private void DoInitializeConnection()
     {
-        if (Interlocked.Exchange(ref initialized, 1) == 1) return;
+        if (Interlocked.Exchange(ref initialized, 1) == 1)
+            return;
 
-        await s7Connector.InitializeAsync();
+        s7Connector.InitializeAsync();
 
         // Triger connection.
         // The initial connection might fail. In this case a reconnect is initiated.
@@ -285,16 +287,11 @@ public class Sharp7Plc : IPlc
             {
                 await s7Connector.Connect();
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 // Ignore. Exception is logged in the connector
             }
-        }, token);
-
-        if (waitForConnection)
-            await s7Connector.ConnectionState
-                .FirstAsync(c => c == Enums.ConnectionState.Connected)
-                .ToTask(token);
+        });
 
         StartNotificationLoop();
     }
@@ -369,10 +366,5 @@ public class Sharp7Plc : IPlc
         if (Interlocked.CompareExchange(ref notificationSubscription, subscription, null) != null)
             // Subscription has already been created (race condition). Dispose new subscription.
             subscription.Dispose();
-    }
-
-    ~Sharp7Plc()
-    {
-        Dispose(false);
     }
 }
