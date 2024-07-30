@@ -40,6 +40,7 @@ internal class Sharp7Connector : IDisposable
     }
 
     public IObservable<ConnectionState> ConnectionState => connectionStateSubject.DistinctUntilChanged().AsObservable();
+    public ConnectionState CurrentConnectionState => connectionStateSubject.Value;
 
     public ILogger Logger { get; set; }
 

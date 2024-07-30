@@ -240,6 +240,8 @@ public class Sharp7Plc : IPlc
             .ToTask(token);
     }
 
+    public override string ToString() => $"S7 {s7Connector} ({s7Connector.CurrentConnectionState})";
+
     /// <summary>
     ///     Initialize PLC and trigger connection. This method will not wait for the connection to be established.
     ///     <para>
