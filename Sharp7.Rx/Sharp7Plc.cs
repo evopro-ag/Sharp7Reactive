@@ -105,9 +105,13 @@ public class Sharp7Plc : IPlc
             disposableContainer.AddDisposableTo(disp);
 
             var observable =
-                // Read variable with GetValue first.
-                // This will propagate any errors due to reading from invalid addresses.
-                Observable.FromAsync(() => GetValue<TValue>(variableName))
+                ConnectionState
+                    // Wait for connection to be established
+                    .FirstAsync(c => c == Enums.ConnectionState.Connected)
+                    // Read variable with GetValue first.
+                    // This will propagate any errors due to reading from invalid addresses.
+                    .SelectMany(_ => GetValue<TValue>(variableName))
+                    // Output results from read loop
                     .Concat(
                         disposableContainer.Observable
                             .Select(bytes => ValueConverter.ReadFromBuffer<TValue>(bytes, address))
