@@ -10,7 +10,7 @@ using Sharp7.Rx.Settings;
 
 namespace Sharp7.Rx;
 
-internal class Sharp7Connector: IDisposable
+internal class Sharp7Connector : IDisposable
 {
     private readonly BehaviorSubject<ConnectionState> connectionStateSubject = new(Enums.ConnectionState.Initial);
     private readonly int cpuSlotNr;
@@ -35,15 +35,19 @@ internal class Sharp7Connector: IDisposable
         rackNr = settings.RackNumber;
 
         ReconnectDelay = TimeSpan.FromSeconds(5);
+
+        ConnectionIdentifier = $"{ipAddress}:{port} Cpu {cpuSlotNr} Rack {rackNr}";
     }
 
     public IObservable<ConnectionState> ConnectionState => connectionStateSubject.DistinctUntilChanged().AsObservable();
 
     public ILogger Logger { get; set; }
 
-    public TimeSpan ReconnectDelay { get; set; }
+    private string ConnectionIdentifier { get; }
 
     private bool IsConnected => connectionStateSubject.Value == Enums.ConnectionState.Connected;
+
+    private TimeSpan ReconnectDelay { get; }
 
     public void Dispose()
     {
@@ -67,13 +71,13 @@ internal class Sharp7Connector: IDisposable
             else
             {
                 var errorText = EvaluateErrorCode(errorCode);
-                Logger.LogError("Failed to establish initial connection: {Error}", errorText);
+                Logger.LogError("Failed to establish initial connection to {Connection}: {Error}", ConnectionIdentifier, errorText);
             }
         }
         catch (Exception ex)
         {
             connectionStateSubject.OnNext(Enums.ConnectionState.ConnectionLost);
-            Logger.LogError(ex, "Failed to establish initial connection.");
+            Logger.LogError(ex, "Failed to establish initial connection ro {Connection}.", ConnectionIdentifier);
         }
 
         return false;
@@ -125,14 +129,14 @@ internal class Sharp7Connector: IDisposable
                     .Take(1)
                     .SelectMany(_ => Reconnect())
                     .RepeatAfterDelay(ReconnectDelay)
-                    .LogAndRetry(Logger, "Error while reconnecting to S7.")
+                    .LogAndRetry(Logger, $"Error while reconnecting to {ConnectionIdentifier}.")
                     .Subscribe();
 
             disposables.Add(subscription);
         }
         catch (Exception ex)
         {
-            Logger?.LogError(ex, "S7 driver could not be initialized");
+            Logger?.LogError(ex, "S7 driver for {Connection} could not be initialized", ConnectionIdentifier);
         }
 
         return Task.FromResult(true);
@@ -149,10 +153,12 @@ internal class Sharp7Connector: IDisposable
             await Task.Factory.StartNew(() => sharp7.ReadArea(operand.ToArea(), dbNo, startByteAddress, bytesToRead, S7WordLength.Byte, buffer), token, TaskCreationOptions.None, scheduler);
         token.ThrowIfCancellationRequested();
 
-        EnsureSuccessOrThrow(result, $"Error reading {operand}{dbNo}:{startByteAddress}->{bytesToRead}");
+        EnsureSuccessOrThrow(result, $"Error reading {operand}{dbNo}:{startByteAddress} ({bytesToRead} bytes)");
 
         return buffer;
     }
+
+    public override string ToString() => ConnectionIdentifier;
 
     public async Task WriteBit(Operand operand, ushort startByteAddress, byte bitAdress, bool value, ushort dbNo, CancellationToken token)
     {
@@ -175,7 +181,7 @@ internal class Sharp7Connector: IDisposable
         var result = await Task.Factory.StartNew(() => sharp7.WriteArea(operand.ToArea(), dbNo, startByteAddress, bytesToWrite, S7WordLength.Byte, data), token, TaskCreationOptions.None, scheduler);
         token.ThrowIfCancellationRequested();
 
-        EnsureSuccessOrThrow(result, $"Error writing {operand}{dbNo}:{startByteAddress}.{data.Length}");
+        EnsureSuccessOrThrow(result, $"Error writing {operand}{dbNo}:{startByteAddress} ({data.Length} bytes)");
     }
 
 
@@ -222,18 +228,18 @@ internal class Sharp7Connector: IDisposable
             throw new InvalidOperationException("Plc is not connected");
     }
 
-    private void EnsureSuccessOrThrow(int result, string message)
+    private void EnsureSuccessOrThrow(int errorCode, string message)
     {
-        if (result == 0) return;
+        if (errorCode == 0) return;
 
-        var errorText = EvaluateErrorCode(result);
+        var errorText = EvaluateErrorCode(errorCode);
         var completeMessage = $"{message}: {errorText}";
 
-        var additionalErrorText = S7ErrorCodes.GetAdditionalErrorText(result);
+        var additionalErrorText = S7ErrorCodes.GetAdditionalErrorText(errorCode);
         if (additionalErrorText != null)
             completeMessage += Environment.NewLine + additionalErrorText;
 
-        throw new S7CommunicationException(completeMessage, result, errorText);
+        throw new S7CommunicationException(completeMessage, errorCode, errorText);
     }
 
     private string EvaluateErrorCode(int errorCode)
@@ -245,7 +251,6 @@ internal class Sharp7Connector: IDisposable
             throw new InvalidOperationException("S7 driver is not initialized.");
 
         var errorText = $"0x{errorCode:X}, {sharp7.ErrorText(errorCode)}";
-        Logger?.LogError($"S7 Error {errorText}");
 
         if (S7ErrorCodes.AssumeConnectionLost(errorCode))
             SetConnectionLostState();

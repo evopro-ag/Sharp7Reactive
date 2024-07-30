@@ -55,7 +55,7 @@ public class Sharp7Plc : IPlc
     /// </param>
     public Sharp7Plc(string ipAddress, int rackNumber, int cpuMpiAddress, int port = 102, TimeSpan? multiVarRequestCycleTime = null)
     {
-        plcConnectionSettings = new PlcConnectionSettings {IpAddress = ipAddress, RackNumber = rackNumber, CpuMpiAddress = cpuMpiAddress, Port = port};
+        plcConnectionSettings = new PlcConnectionSettings { IpAddress = ipAddress, RackNumber = rackNumber, CpuMpiAddress = cpuMpiAddress, Port = port };
         s7Connector = new Sharp7Connector(plcConnectionSettings, variableNameParser);
         ConnectionState = s7Connector.ConnectionState;
 
@@ -179,7 +179,7 @@ public class Sharp7Plc : IPlc
             // Special handling for bools, which are written on a by-bit basis. Writing a complete byte would
             // overwrite other bits within this byte.
 
-            await s7Connector.WriteBit(address.Operand, address.Start, address.Bit!.Value, (bool) (object) value, address.DbNo, token);
+            await s7Connector.WriteBit(address.Operand, address.Start, address.Bit!.Value, (bool)(object)value, address.DbNo, token);
         }
         else
         {
@@ -283,7 +283,7 @@ public class Sharp7Plc : IPlc
             }
             catch (Exception e)
             {
-                Logger?.LogError(e, "Intiial PLC connection failed.");
+                // Ignore. Exception is logged in the connector
             }
         }, token);
 
@@ -329,9 +329,12 @@ public class Sharp7Plc : IPlc
 
     private void PrintAndResetPerformanceStatistik()
     {
-        if (performanceCounter.Count == performanceCounter.Capacity)
+        if (performanceCounter.Count != performanceCounter.Capacity) return;
+
+        if (Logger.IsEnabled(LogLevel.Trace))
         {
             var average = performanceCounter.Average();
+
             var min = performanceCounter.Min();
             var max = performanceCounter.Max();
 
@@ -340,8 +343,9 @@ public class Sharp7Plc : IPlc
                              performanceCounter.Capacity, min, max, average,
                              multiVariableSubscriptions.ExistingKeys.Count(),
                              MultiVarRequestMaxItems);
-            performanceCounter.Clear();
         }
+
+        performanceCounter.Clear();
     }
 
     private void StartNotificationLoop()
@@ -355,7 +359,7 @@ public class Sharp7Plc : IPlc
                 .FirstAsync(states => states == Enums.ConnectionState.Connected)
                 .SelectMany(_ => GetAllValues(s7Connector))
                 .RepeatAfterDelay(MultiVarRequestCycleTime)
-                .LogAndRetryAfterDelay(Logger, MultiVarRequestCycleTime, "Error while getting batch notifications from plc")
+                .LogAndRetryAfterDelay(Logger, MultiVarRequestCycleTime, $"Error while getting batch notifications from {s7Connector}")
                 .Subscribe();
 
         if (Interlocked.CompareExchange(ref notificationSubscription, subscription, null) != null)
