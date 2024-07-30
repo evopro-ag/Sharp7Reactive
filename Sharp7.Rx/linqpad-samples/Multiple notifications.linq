@@ -16,13 +16,13 @@ var cpuMpiAddress = 0;
 
 using var plc = new Sharp7Plc(ip, rackNumber, cpuMpiAddress);
 
-plc.ConnectionState.Dump();
+_ = plc.ConnectionState.Dump();
 
 await plc.InitializeConnection();
 
 // create an IObservable
-plc.CreateNotification<short>($"DB{db}.Int6", Sharp7.Rx.Enums.TransmissionMode.OnChange).Dump("Int 6");
-plc.CreateNotification<float>($"DB{db}.Real10", Sharp7.Rx.Enums.TransmissionMode.OnChange).Dump("Real 10");
+_ = plc.CreateNotification<short>($"DB{db}.Int6", Sharp7.Rx.Enums.TransmissionMode.OnChange).Dump("Int 6");
+_ = plc.CreateNotification<float>($"DB{db}.Real10", Sharp7.Rx.Enums.TransmissionMode.OnChange).Dump("Real 10");
 
 
 

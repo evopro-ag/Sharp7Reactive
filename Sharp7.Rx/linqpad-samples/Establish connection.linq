@@ -20,10 +20,12 @@ using var plc = new Sharp7Plc(ip, rackNumber, cpuMpiAddress);
 // Initialize connection
 await plc.InitializeConnection();
 
-// wait for connection to be established
-await plc.ConnectionState
-	.FirstAsync(c => c == Sharp7.Rx.Enums.ConnectionState.Connected)
-	.ToTask();
+// // Alternative: Trigger connection and wait for ConnectionState == Connected
+// plc.TriggerConnection();
+// // wait for connection to be established
+//await plc.ConnectionState
+//    .FirstAsync(c => c == Sharp7.Rx.Enums.ConnectionState.Connected)
+//    .ToTask();
 
 "Connection established".Dump();
 

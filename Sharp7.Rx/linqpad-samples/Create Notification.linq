@@ -23,7 +23,7 @@ await plc.InitializeConnection();
 // create an IObservable
 var observable = plc.CreateNotification<short>($"DB{db}.Int6", Sharp7.Rx.Enums.TransmissionMode.OnChange);
 
-observable.Dump();
+_ = observable.Dump();
 
 for (int i = 0; i < 10; i++)
 {
